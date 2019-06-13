@@ -1,0 +1,76 @@
+name;mean;keeped;expected_class;NA_allowed;allowed_val;info_session;info_mopho;Question
+ORIGINE;nom de la strucutre qui a envoyé les données;TRUE;character;FALSE;;FALSE;FALSE;
+ID;identifiant peut être de la donnée mais il y a qq doublon;TRUE;character;TRUE;;FALSE;FALSE;il y a des doublons
+OBSERVATEUR;nom de l'observateur principal;TRUE;character;TRUE;;TRUE;FALSE;
+OBSERVATEUR2;nom d'un observateur secondaire;TRUE;character;TRUE;;TRUE;FALSE;
+RESPONSABLE;nom du responsable ;TRUE;character;TRUE;;TRUE;FALSE;
+COMMUNE;nom de la commune;TRUE;character;TRUE;;TRUE;FALSE;
+INSEE;code INSEE de la commune;TRUE;integer;TRUE;;TRUE;FALSE;
+DEPARTEMENT;nom du département;TRUE;character;TRUE;;TRUE;FALSE;
+DEPARTEMENT2;code du département;TRUE;integer;TRUE;;TRUE;FALSE;
+REGION;nom de la region;TRUE;character;TRUE;;TRUE;FALSE;
+LIEU_DIT;nom du lieu-dit;TRUE;character;TRUE;;TRUE;FALSE;
+DATE;date;TRUE;character;FALSE;;TRUE;FALSE;
+ANNEE;année;TRUE;integer;FALSE;;TRUE;FALSE;
+MOIS;mois;TRUE;integer;FALSE;;TRUE;FALSE;
+JOUR;jour;TRUE;integer;FALSE;;TRUE;FALSE;
+JOUR2;NA;FALSE;logical;TRUE;;TRUE;FALSE;
+JOUR_ANNEE;jour julien;TRUE;integer;FALSE;;TRUE;FALSE;
+HEURE;heure de capture;TRUE;character;TRUE;;TRUE;FALSE;
+TAXON;nom latin de l'espèce;TRUE;character;TRUE;;FALSE;TRUE;
+SEXE;sexe;TRUE;character;TRUE;;FALSE;TRUE;
+AGE;age;TRUE;character;TRUE;;FALSE;TRUE;
+AB;longueur de l'avant bras;TRUE;numeric;TRUE;;FALSE;TRUE;
+POIDS;masse;TRUE;numeric;TRUE;;FALSE;TRUE;
+POUCE;longueur du pouce;TRUE;numeric;TRUE;;FALSE;TRUE;
+D3;longueur du 3ème doigt;TRUE;numeric;TRUE;;FALSE;TRUE;
+D5;longueur du 5ème doigt;TRUE;numeric;TRUE;;FALSE;TRUE;
+METHODE_DOIGTS;méthode de mesure des doigts;TRUE;character;TRUE;Avec poignet|Sans poignet;FALSE;TRUE;FAUX et VRAI ? 
+D5_avecpoignet_max;longueur du 5ème doigt avec le poignet MAX ?;TRUE;numeric;TRUE;;FALSE;TRUE;
+D3_avecpoignet_max;longueur du 3ème doigt avec le poignet MAX ?;TRUE;numeric;TRUE;;FALSE;TRUE;
+D3_avecpoignet;longueur du 5ème doigt avec le poignet;TRUE;numeric;TRUE;;FALSE;TRUE;
+D3_sanspoignet;longueur du 3ème doigt sans le poignet;TRUE;numeric;TRUE;;FALSE;TRUE;
+D5_sanspoignet;longueur du 5ème doigt sans le poignet;TRUE;numeric;TRUE;;FALSE;TRUE;
+D3_avecpoignet_min;longueur du 3ème doigt avec le poignet MIN ?;TRUE;numeric;TRUE;;FALSE;TRUE;
+D5_avecpoignet;longueur du 5ème doigt avec le poignet;TRUE;numeric;TRUE;;FALSE;TRUE;
+D5_avecpoignet_min;longueur du 5ème doigt avec le poignet MIN ?;TRUE;numeric;TRUE;;FALSE;TRUE;
+QUEUE;longueur de la queue;TRUE;numeric;TRUE;;FALSE;TRUE;
+TIBIA;longueur du tibia;TRUE;numeric;TRUE;;FALSE;TRUE;
+PIED;longueur du pied;TRUE;numeric;TRUE;;FALSE;TRUE;
+CM3;distance incluante canine molaire supérieur;TRUE;numeric;TRUE;;FALSE;TRUE;
+LONG_OREILLE;longueur de l'oreille;TRUE;numeric;TRUE;;FALSE;TRUE;
+LARG_OREILLE;largeur de l'oreille;TRUE;numeric;TRUE;;FALSE;TRUE;
+LONG_TRAGUS;longueur du tragus;TRUE;numeric;TRUE;;FALSE;TRUE;
+LARG_TRAGUS;largeur du targus;TRUE;numeric;TRUE;;FALSE;TRUE;
+GRIFFE;longueur de la griffe;TRUE;numeric;TRUE;;FALSE;TRUE;"il y a des valeurs en text genre ""< 2"""
+STATUT_ACTIVITE;statut d'activité;FALSE;character;TRUE;Transit|Reproduction|Eté|Swarming ?|Mise bas|Hiver|Swarming|Mise bas ?;FALSE;TRUE;
+STATUT_PARITE;statut de ;FALSE;character;TRUE;Transit|Parturition|Estivage|Indices de reproduction ;FALSE;TRUE;
+STATUT_REPRO;statut de reproduction;FALSE;character;TRUE;Normal|T2|JV|VNA: Vierge non actif|ANC: Adulte non actif|M2|E|M3|Repli|multipare|AAC: Adulte actif|G0 E0|Mâle non actif|ML|Multipare|M0|G0E0|G1E1|Erc|Erp|NR|G0|G1|IMM: Immature|T0E0n|G2E1|T2 E2|T1 E2|G1E0|sex actif|Autres|G|FM|T1 E1|T3 E2|T2 E3|G2E2|pas actif|PG|primipare allaitante|Non gestante|gestante ?|TGEG|TGE0|Non Lactante|L|T1 E0|T0 E1|T2 E1|actif|E1 T0|non allait|VAA : Vierge actif|Oui|NL|JN|T0 E0|TM+|D3=53|TM+G0E0|G1 E0|VNA|E0TM-|TM0|E1TM0|TM0G0E0|E1 T1|ANC|T1 E1n|TM-|T1 E1N|T2 E1B|T0 E2b|G0 TM0|E0TM0|T2 E2B|T1 E1B|T0 E3|T0 E2|T1 E3|T1 E2n|T2 E2n|T0 E3b|T3 E3|T1E2N|TM0 G0|E1|E1TM+|E0|TM0G1E1|T1 E3B|ANA|E2 T1|T1 E2b|T1 E2N|ANC ou PAL|T2 E2N|T2 E3B|PAL?|Non lactante|T0 E2n|T1 E2B|T2 E0|T1 E1b|G0 TM+|ADA|E0TM+|T0E0d|TM0G1E0|TM-G1E0|TM|G0E0TM-|E0TM|E1TM-|TM0G0E1|TMG1E0|T0E0|Vierge non Actif|TM- G0|TMG0E0|TM0 G0 E0|E0 T2|E0 T0|G2E0|G1E2|G0E1|E1 T2|E0 T1|T0 E1n|GG TM0|E1TM|TM-G0E0|TM G0E0|T0 E+|T0 E1B|T0 E2B|E2 T0|TMO  G1|1|T0 E1N|AJA|Gestante TM0|TMO  post lact|GG 2-3 EV|G0 TM++|TM+ G0|E1 T3|T4 E1|T1 E3N|T3 E3N|T4 E2|E2 T3|G0E2|T4 E3|T3 E2B|T2 E1N|E2 T2|T1 E3n|T0 E2 blanc|T2 E1b|TM--|T3 E1|Multipare probable post lactante|R0|NL ou PL ?|G0 E0 TM0|G1 TM-|PL ?|T3 E3B|Tb : 161|N|TE E1|Actif|1 ou 2|T3 E2b|T2 E1n|T0EGn|TGEGb|G1 - E0|GG actif|TMO|T3 E2n|G1 TM0|TM0 G1|TM0GGE0|NL?|G1 TM|Gest TM0|T3 E1n|na|non repro|post-allaitante ?|Grosse testicule glande blancges|G0 E2|nullipare ?|primipare|Immature ?|GG E0|GGE2|Primipare|G2E1N|Primipare ?|sexuellement active|début de lactation probable|rns|G0 - E0|Epididymes noires et remont?s|T1 E2bn|T2 E3n|T2 E3N|G0 E0 blanc|T3 E2N|AVO: Avortement|T2 E2 N&B|Primipare?/Nullipare?|T0 E1b|T2 E1nETb|T+ E0|T+ E+|multipare gestante;FALSE;TRUE;
+MAMELLES;Etat des mamelles;TRUE;character;TRUE;M0|M2|M3|M1|M3_M1|M0_M1;FALSE;TRUE;
+GESTATION;Etat de la gestation;TRUE;character;TRUE;NG|G|PG;FALSE;TRUE;
+TEST;Taille des testicules;TRUE;character;TRUE;T0|T2|T1|T1_T2;FALSE;TRUE;
+EPID;Taille des epididymes;TRUE;character;TRUE;E0|E2|E1|E1_E2;FALSE;TRUE;
+TV;Tunique vaginale;TRUE;character;TRUE;C|S|B;FALSE;TRUE;
+FORME_PENIS;Forme du pénis;TRUE;character;TRUE;;FALSE;TRUE;
+COULEUR_SEXE;Couleur du sexe (pourtour de la vulve ou pénis);TRUE;character;TRUE;;FALSE;TRUE;
+EPIPH;Epiphyses articulaires;TRUE;character;TRUE;F2|F1|F0|F0_F1;FALSE;TRUE;
+CHIN_SPOT;Tache mentonnière « Chinspot »;TRUE;character;TRUE;C0|C1|C2|C1_C2;FALSE;TRUE;
+TAILLE_GLANDES;Taille des glandes buccales;TRUE;character;TRUE;Gd1|Gd0|Gd2;FALSE;TRUE;
+COUL_GLANDES;Couleur des glandes buccales;TRUE;character;TRUE;P|W|Or;FALSE;TRUE;
+USURE_DENTS;Usure des dents;TRUE;character;TRUE;U0|U1|U2|U0_U1;FALSE;TRUE;
+CELLULES_ALAIRES;Nombre de cellules alaires;TRUE;integer;TRUE;;FALSE;TRUE;
+COMMENTAIRES;Commentaire sur l'individus;TRUE;character;TRUE;;FALSE;FALSE;
+COMMENTAIRES2;Commentaire divers;TRUE;character;TRUE;;FALSE;FALSE;
+COMMENTAIRES_RELEVE;Commentaire session;TRUE;character;TRUE;;FALSE;FALSE;
+PARASITES;Commentaire sur la presence de parasites;TRUE;character;TRUE;;FALSE;FALSE;
+PUCE;Commentaire sur les puces;FALSE;logical;TRUE;;FALSE;FALSE;que des NA
+TIQUE;Commentaire sur les tique;FALSE;logical;TRUE;;FALSE;FALSE;que des NA
+PUCES;Nombre de puces;TRUE;integer;TRUE;;FALSE;FALSE;presence de X
+TIQUES;Nombre de tiques;TRUE;integer;TRUE;;FALSE;FALSE;presence de X
+ACARIENS;Nombre d'acariens;TRUE;integer;TRUE;;FALSE;FALSE;presence de X
+NYCT;Nombre de nyctéribiidae (diptère aptère);TRUE;integer;TRUE;;FALSE;FALSE;presence de X
+CIMEX;Nombre de cimicidae (punaise);TRUE;integer;TRUE;;FALSE;FALSE;que 0 et 1 
+HEURE_POSE_FILET;Heure de pose des filet;TRUE;character;TRUE;;TRUE;FALSE;
+MUE;Présence de mue;TRUE;logical;TRUE;OUI|NON;FALSE;FALSE;
+ESPECE;nom français de l'espèce;TRUE;character;TRUE;;FALSE;TRUE;
+EPIBLEME;Présence d'un épiblème (lobe post-calcanéen);TRUE;logical;TRUE;OUI|NON;FALSE;TRUE;presence de /
