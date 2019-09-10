@@ -149,3 +149,96 @@ dataCleaning <- function(d=NULL,dfield=NULL,id=NULL,output="data") {
 
 
 
+
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title correction des noms de communes
+##' @param data data table or path of the data table
+##' @param com_cor correcting table of the path of the table
+##' @return data.table of updating data
+##' @author Romain Lorrilliere
+commune_corrections <- function(data,com_cor=NULL) {
+    ## Pour deboguage ------
+    ##data=NULL;com_cor=NULL
+    ## ----------------------
+    library(data.table)
+    if(is.null(data)) data <- fread("output/data_2019-06-06_clean.csv") else if(class(data)[1] == "character") data <- fread(data)
+    if(is.null(com_cor)) com_cor<- fread("library/correctifs_communes.csv") else if(class(com_cor)[1] == "character") com_cor<- fread(com_cor)
+
+    data <- data.table(data)
+
+    data$COMMUNUE <- toupper(data$COMMUNE)
+
+    cat("Correctifs des noms de communes (",nrow(com_cor)," correctifs)\n\n",sep="")
+
+    for(i in 1:nrow(com_cor)) {
+      #  i=1
+        from <- com_cor[i,search]
+        to <- com_cor[i,replaceBy]
+        sub <- com_cor[i,restrict]!=""
+        strict <- com_cor[i,strictly]
+        cat(i,": ",as.vector(from)," -> ", to," | subset:",sub,"  nom complet: ",strict,"\n")
+        if(sub) { # on remplace un sous ensemble des noms
+            col <- com_cor[i,fieldRestrict]
+            val <- com_cor[i,restrict]
+            cat("     ",col," %in% ",val," \n")
+            if(strict) { # on remplace tout le nom
+                nbcor <- nrow(data[data[[col]] %in% val & data$COMMUNE == from])
+                if(nbcor>0)
+                    data <- data[data[[col]] %in% val & data$COMMUNE == from,COMMUNE:= to]
+            } else { # ELSE strict   remplace qu'un pattern
+                nbcor <- length(grep(from,data[data[[col]] %in% val,COMMUNE]))
+                if(nbcor>0)
+                    data$COMMUNE <- ifelse(data[[col]] %in% val, gsub(from,to,data$COMMUNE),data$COMMUNE)
+            } # END ELSE strict
+        } else { # ELSE sub on remplace tous les noms
+            if(strict) { # on remplace tout le nom
+                nbcor <- nrow(data[data[["COMMUNE"]]==from])
+                if(nbcor>0)
+                    data <- data[data[["COMMUNE"]]==from,"COMMUNE":= to]
+            } else { # ELSE strict   remplace qu'un pattern
+                nbcor <- length(grep(from,data[,COMMUNE],perl=TRUE))
+                if(nbcor>0)
+                    data$COMMUNE <- gsub(from,to,data[,COMMUNE],perl=TRUE)
+            } # END ELSE strict
+        } #END ELSE sub
+        cat("    -> ",nbcor," remplacement(s)\n")
+    } #END for(i in 1:nrow(com_cor))
+    return(data)
+} # END commune_corrections
+
+
+
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title
+##' @return
+##' @author
+add_localite <- function(){
+
+    library(sf)
+    library(data.table)
+    library(dplyr)
+
+
+    com_shp <- st_read("library/CommunesCentr.shp")
+    com_table <- st_drop_geometry(com_shp)
+    com_cor <- fread("library/correctifs_communes.csv")
+    data <- fread("output/data_2019-06-06_clean.csv")
+
+    data <- commune_corrections(data)
+
+
+
+    colloc <- c("pk_data","COMMUNE","INSEE","DEPARTEMENT","DEPARTEMENT2","REGION")
+  #  dataloc <-
+
+
+
+
+
+
+} #END add_localite
+
