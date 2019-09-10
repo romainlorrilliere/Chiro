@@ -224,8 +224,7 @@ add_localite <- function(){
 
 
     com_shp <- st_read("library/CommunesCentr.shp")
-    com_table <- st_drop_geometry(com_shp)
-    com_cor <- fread("library/correctifs_communes.csv")
+    com_table <- data.table(st_drop_geometry(com_shp))
     data <- fread("output/data_2019-06-06_clean.csv")
 
     data <- commune_corrections(data)
@@ -233,11 +232,23 @@ add_localite <- function(){
 
 
     colloc <- c("pk_data","COMMUNE","INSEE","DEPARTEMENT","DEPARTEMENT2","REGION")
-  #  dataloc <-
+    dataloc <- data[,..colloc]
+
+    dataloc$INSEE <- sprintf("%05d", dataloc$INSEE)
+    dataloc$DEPARTEMENT2 <- sprintf("%02d", dataloc$DEPARTEMENT2)
 
 
+    dataloc_insee <- subset(dataloc,!is.na(INSEE))
+    colnames(com_table)[colnames(com_table) == "INSEE_COM"] <- "INSEE"
+    com_table$INSEE <- as.character(com_table$INSEE)
+
+    dataloc_insee <- inner_join(dataloc_insee,com_table,by="INSEE")
+
+    dataloc_insee_erreur <- subset(dataloc_insee,COMMUNE != NOM_COMM)
+    if(nrow(dataloc_insee_erreur)) {
 
 
+        }
 
 
 } #END add_localite
