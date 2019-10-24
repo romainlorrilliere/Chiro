@@ -1,12 +1,54 @@
-* Data capture [1/3]
+* Data capture [2/3]
 ** TODO [#A] Analyse morpho [0/5]
 *** TODO Pipistrelle pigmé / commune
 *** TODO 4 espece de pipistrelle
 *** TODO Naterrer 4 espece
 *** TODO Grands murins
-** TODO Script gestion des communes
+** DONE Script gestion des communes
+*** DONE recupéré script d'Adeline
+*** DONE pb des communes du nord pas de calais ex: LOCQUIGNOL
 ** DONE netoyer la table de données
 *** DONE faire le bilan des colonnes
-
-
+* Base de trait
+** Julie fait la liste et je reprend la main
+* TODO [#A] Comm de Julie en Octobre
+** TODO  histo sexe et période
+** TODO [#A] Phénologie de capture[2/3]
+- [X] Nombre de captures par sexe / âge / espèce en fonction de
+  l'heure de la nuit.
+  - [X] A tester : effet météo (T°min, T°max, H°min, H°max).
+  - [X] Ajouter un effet date et un effet latitude/longitude.
+- [X] Tester pour l'ensemble du jeu avec un effet date et pour trois périodes distinctes :
+juin-juillet / Aout / 15 aout - 15 octobre
+- [ ] chercher point haut
+** Taille de l'Avant bras des juv (indice d'état de santé ? à voir si ça sort)[0/3]
+- [ ] tester la corrélation entre l'Avant-Bras des jeunes et le BCI
+  (Indice de masse corporel Rapport poids/Longueur AB²) des femelles
+  Adultes. Pour la période à laquelle on capture des juvéniles. Avec un effet année.
+- [ ] Tester la corrélation entre le nb de juvéniles et la taille des
+  AB des juvéniles: Idem point précédent
+- [ ] Taille AB des juv en fonction de la météo (T° et H°), à tester
+  pour l'ensemble des espèces et pour des esp avec bcp de données
+  comme la pippip ou myodau : mais je ne sais pas trop quoi choisir
+  comme valeur pour les conditions météo... ça dépend aussi de ce
+  qu'on dispose. Peut être définir une valeur par année : T°moy? ou %
+  de jours supérieurs ou inférieurs à X°C ? A creuser...
+** Indice de masse corporelle BCI, à tester pour les esp avec le plus de données [0/3]
+- [ ] BCI en fonction de l'heure de la nuit (heure après coucher du
+  soleil). Covariables : jour de l'année², sexe, Y. Sortir un graph
+  (GAM) pour illustrer la prise de poids au cours de la nuit + tester
+  effet des proportions d'habitats par commune
+- [ ] BCI en fonction du jour de l'année. Covariables : jour de
+  l'année², sexe, Y. Sortir un graph (GAM) pour illustrer la variation
+  de la courbe de poids au cours de l'année + tester effet des
+  proportions d'habitats par commune
+- [ ] !!!  Tester la corrélation entre le BCI avant (sept) et après (mai)
+  hibernation, à
+  tester pour toutes les esp et pour les esp avec assez de données. Et
+  tester effet météo sur ces variables : T° et H° écart à la  moy un mois avant
+  entrée en hibernation ? 
+* Analyse swarming
+** heure de sortie
+* cahier des charges pour DB chiro
+** relecture
 
