@@ -5,7 +5,7 @@ require(data.table)
 require(sf)
 require(tools)
 
-mainCleaning <- function(d=NULL,dcolumn="library/capture_column.csv",dcommune="library/correctifs_communes.csv",shape_commune="library/CommunesCentr_L93.shp", do_data_cleaning=TRUE,do_commune_corrections=TRUE,do_localite_adding=TRUE,do_time_cleaning=TRUE,do_period_adding=TRUE,do_sunset_adding=FALSE,do_weather_adding=FALSE,saveStep=TRUE,repStep="data/",save=TRUE,fileoutput=NULL,repOut="data/",output=FALSE) {
+mainCleaning <- function(d=NULL,dcolumn="library/capture_column.csv",dcommune="library/correctifs_communes.csv",shape_commune="library/CommunesCentr_L93.shp",weatherRdata_file="data/data_meteo_temp_prec_ens_mean_0.25deg_reg_v20.Rdata", do_data_cleaning=TRUE,do_commune_corrections=TRUE,do_localite_adding=TRUE,do_time_cleaning=TRUE,do_period_adding=TRUE,do_sunset_adding=FALSE,do_weather_adding=FALSE,saveStep=TRUE,repStep="data/",save=TRUE,fileoutput=NULL,repOut="data/",output=FALSE) {
 
     ## d=NULL;dcolumn="library/capture_column.csv";dcommune="library/correctifs_communes.csv";shape_commune="library/CommunesCentr_L93.shp"; do_data_cleaning=TRUE;do_commune_corrections=TRUE;do_localite_adding=TRUE;do_time_cleaning=TRUE;do_period_adding=TRUE;do_sunset_adding=FALSE;do_weather_adding=FALSE;saveStep=TRUE;repStep="data/";save=TRUE;fileoutput=NULL;repOut="data/";output=FALSE
 
@@ -22,7 +22,7 @@ mainCleaning <- function(d=NULL,dcolumn="library/capture_column.csv",dcommune="l
     if(class(d)[1]=="character") file <- d else file <- format(as.Date(Sys.time()),"%Y%m%d")
 
     if(is.null(fileoutput))
-        fileoutput <- paste0("data_capt_",file,"_clean_complet.csv")
+        fileoutput <- paste0("data_capt_",file,".csv")
     prefFile <- file_path_sans_ext(fileoutput)
     fileoutput <- paste0(repOut,prefFile,".csv")
 
@@ -72,7 +72,7 @@ mainCleaning <- function(d=NULL,dcolumn="library/capture_column.csv",dcommune="l
 
     cat(" -6- add_sunset_sunrise\n")
     if(do_sunset_adding){
-        d <- add_sunset_sunrise(d,output=TRUE,save=saveStep,fileoutput=paste0(prefFile,"_clean_loc_time_periode_sunset.csv"))
+        d <- add_sunset_sunrise(d,output=TRUE,save=saveStep,repout=repStep,fileoutput=paste0(prefFile,"_clean_loc_time_periode_sunset.csv"))
         cat("    DONE!\n")
     } else {
         cat("    Step canceled...\n")
@@ -80,7 +80,7 @@ mainCleaning <- function(d=NULL,dcolumn="library/capture_column.csv",dcommune="l
 
     cat(" -7- add_weather\n")
     if(do_weather_adding){
-        d <- add_weather(d,output=TRUE,save=saveStep,fileoutput=paste0(prefFile,"_clean_loc_time_periode_sunset_weather.csv"))
+        d <- add_weather(d,output=TRUE,save=saveStep,repout=repStep,fileoutput=paste0(repStep,prefFile,"_clean_loc_time_periode_sunset_weather.csv"),fileoutput_weather=paste0(repStep,prefFile,"_sample_weather.csv"))
         cat("    DONE!\n")
     } else {
         cat("    Step canceled...\n")
@@ -841,7 +841,7 @@ add_sunset_sunrise <- function(d="data/data_2019-06-06_clean_loc.csv",output=FAL
     library(dplyr)
     library(data.table)
     d <- my_import_fread(d,"ex: data/data_2019-06-06_clean_loc.csv")
-browser()
+#browser()
 
     dd <- subset(d,!is.na(d$DATE)&!is.na(d$HEURE))
     cat(nrow(dd),"samples with valid date and time\n")
@@ -882,85 +882,107 @@ browser()
 
 
 
-add_weather <- function(d="data/data_2019-06-06_clean_loc_sunset.csv",output=FALSE) {
+add_weather <- function(d="data/data_2019-06-06_clean_loc_sunset.csv",output=FALSE,save=saveStep,repout=NULL,fileoutput=NULL,fileoutput_weather=NULL) {
 
                                         #d="data/data_2019-06-06_clean_loc.csv";output=FALSE
     library(data.table)
     if(class(d)[1]=="character") d <- fread(d)
 
-    FTempMean="library/tg_0.25deg_reg_2011-2017_v17.0_2.nc"
-
-    ## nc <- create.nc(FTempMean)
-    load("library/temp.Rdata")
-    TempMean <- temp
-
-                                        #  TempMean <- temporal_mean(temp,time_avg="winow",win_length=1)
+##    FTempMean="library/tg_0.25deg_reg_2011-2017_v17.0_2.nc"
+##
+##   ## nc <- create.nc(FTempMean)
+##   load("library/temp.Rdata")
+##   TempMean <- temp
+##
+##                                       #  TempMean <- temporal_mean(temp,time_avg="winow",win_length=1)
 
     dsample <- unique(subset(d,ANNEE>2011&ANNEE<2018 & !(is.na(X_CENTROID)),select=c("INSEE","X_CENTROID","Y_CENTROID","DATE_NIGHT_POSIX")))
-    dsample$id_sample <- 1:nrow(dsample)
-    dsample$longitude <- (floor(dsample$X_CENTROID*4)/4)+0.125
-    dsample$latitude <- (floor(dsample$Y_CENTROID*4)/4)+0.125
-
-    dsite <- unique(dsample[,c("INSEE","longitude","latitude")])
-    dsite$site_id <- 1:nrow(dsite)
-
-    dsiteREF <- dsite[,c("site_id","INSEE")]
-    dsite <- dsite[,c("site_id","longitude","latitude")]
-
-    point.TM <- point_grid_extract(temp,dsite)
-
-    Jour=yday(point.TM$date_extract)
-
-    weather <- data.frame(matrix(NA,nrow(dsample),5))
-    colnames(weather) <- c("AT1","AT3","AT9","AT27","AT81")
-    weather <- cbind(dsample,weather)
-
-    for (i in 1:nrow(dsample)) {
-                                        # cat(i,"")
-        if (i%%100==1){print(paste(i,Sys.time()))}
-        MatchLongLat=match(paste(dsample$longitude[i],dsample$latitude[i]),paste(dsite$longitude,dsite$latitude))
-        MatchDate=match(dsample$DATE_POSIX[i],as.character(point.TM$date_extract))
-        T1=point.TM[MatchDate,(MatchLongLat+1)]
-        D1=point.TM$date_extract[MatchDate]
-        J1=yday(D1)
-        J1_30=match(Jour,J1)
-        N1=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J1_30)))
-        weather$AT1[i]=T1-N1
-
-        T3=mean(point.TM[(MatchDate-2):MatchDate,(MatchLongLat+1)])
-        J3=c((J1-2):J1) #last 3 days
-        J3=J3-floor((J3-1)/365)*365 #to keep in 1:365 domain
-        J3_30=match(Jour,J3)
-        N3=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J3_30)))
-        weather$AT3[i]=T3-N3
-
-        T9=mean(point.TM[(MatchDate-8):MatchDate,(MatchLongLat+1)])
-        J9=c((J1-8):J1) #last 9 days
-        J9=J9-floor((J9-1)/365)*365 #to keep in 1:365 domain
-        J9_30=match(Jour,J9)
-        N9=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J9_30)))
-        weather$AT9[i]=T9-N9
-
-        T27=mean(point.TM[(MatchDate-26):MatchDate,(MatchLongLat+1)])
-        J27=c((J1-26):J1) #last 9 days
-        J27=J27-floor((J27-1)/365)*365 #to keep in 1:365 domain
-        J27_30=match(Jour,J27)
-        N27=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J27_30)))
-        weather$AT27[i]=T27-N27
-
-        T81=mean(point.TM[(MatchDate-80):MatchDate,(MatchLongLat+1)])
-        J81=c((J1-80):J1) #last 9 days
-        J81=J81-floor((J81-1)/365)*365 #to keep in 1:365 domain
-        J81_30=match(Jour,J81)
-        N81=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J81_30)))
-        weather$AT81[i]=T81-N81
-    }
 
 
-    fwrite(weather,"output/AnomalieTemp.csv")
+
+    weather <- get_sample_weather(dsample,nc_data=weatherRdata_file,dsample_colnames=c("site_id"="INSEE","date"="DATE_NIGHT_POSIX","longitude"="X_CENTROID","latitude"="Y_CENTROID"))
 
 
-    if(output) return(weather)
+##    dsample$id_sample <- 1:nrow(dsample)
+##    dsample$longitude <- (floor(dsample$X_CENTROID*4)/4)+0.125
+##    dsample$latitude <- (floor(dsample$Y_CENTROID*4)/4)+0.125
+##
+##    dsite <- unique(dsample[,c("INSEE","longitude","latitude")])
+##    dsite$site_id <- 1:nrow(dsite)
+##
+##    dsiteREF <- dsite[,c("site_id","INSEE")]
+##    dsite <- dsite[,c("site_id","longitude","latitude")]
+##
+##    point.TM <- point_grid_extract(temp,dsite)
+##
+##    Jour=yday(point.TM$date_extract)
+##
+##    weather <- data.frame(matrix(NA,nrow(dsample),5))
+##    colnames(weather) <- c("AT1","AT3","AT9","AT27","AT81")
+##    weather <- cbind(dsample,weather)
+##
+##    for (i in 1:nrow(dsample)) {
+##                                        # cat(i,"")
+##        if (i%%100==1){print(paste(i,Sys.time()))}
+##        MatchLongLat=match(paste(dsample$longitude[i],dsample$latitude[i]),paste(dsite$longitude,dsite$latitude))
+##        MatchDate=match(dsample$DATE_POSIX[i],as.character(point.TM$date_extract))
+##        T1=point.TM[MatchDate,(MatchLongLat+1)]
+##        D1=point.TM$date_extract[MatchDate]
+##        J1=yday(D1)
+##        J1_30=match(Jour,J1)
+##        N1=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J1_30)))
+##        weather$AT1[i]=T1-N1
+##
+##        T3=mean(point.TM[(MatchDate-2):MatchDate,(MatchLongLat+1)])
+##        J3=c((J1-2):J1) #last 3 days
+##        J3=J3-floor((J3-1)/365)*365 #to keep in 1:365 domain
+##        J3_30=match(Jour,J3)
+##        N3=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J3_30)))
+##        weather$AT3[i]=T3-N3
+##
+##        T9=mean(point.TM[(MatchDate-8):MatchDate,(MatchLongLat+1)])
+##        J9=c((J1-8):J1) #last 9 days
+##        J9=J9-floor((J9-1)/365)*365 #to keep in 1:365 domain
+##        J9_30=match(Jour,J9)
+##        N9=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J9_30)))
+##        weather$AT9[i]=T9-N9
+##
+##        T27=mean(point.TM[(MatchDate-26):MatchDate,(MatchLongLat+1)])
+##        J27=c((J1-26):J1) #last 9 days
+##        J27=J27-floor((J27-1)/365)*365 #to keep in 1:365 domain
+##        J27_30=match(Jour,J27)
+##        N27=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J27_30)))
+##        weather$AT27[i]=T27-N27
+##
+##        T81=mean(point.TM[(MatchDate-80):MatchDate,(MatchLongLat+1)])
+##        J81=c((J1-80):J1) #last 9 days
+##        J81=J81-floor((J81-1)/365)*365 #to keep in 1:365 domain
+##        J81_30=match(Jour,J81)
+##        N81=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J81_30)))
+##        weather$AT81[i]=T81-N81
+##    }
+##
+
+      if(save) {
+          if(is.null(fileoutput))fileoutput<- paste0(format(as.Date(Sys.time()),"%Y%m%d"),"_clean_loc_weather.csv")
+          if(is.null(fileoutput_weather))fileoutput_weather<- paste0(format(as.Date(Sys.time()),"%Y%m%d"),"_sample_weather.csv")
+          fileoutput <- paste0(repout,fileoutput)
+          fileoutput_weather <- paste0(repout,fileoutput_weather)
+
+          cat("\n\n")
+          cat("  -->", fileoutput_weather)
+          write.csv(weather,fileoutput_weather,row.name=FALSE)
+          cat("   DONE!\n")
+
+
+          cat("\n\n")
+          cat("  -->", fileoutput)
+          write.csv(d,fileoutput,row.names=FALSE)
+          cat("   DONE!\n")
+      }
+
+
+    if(output) return(d)
 
 
 
@@ -1102,8 +1124,8 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_lo
             if(is.null(nc_data)){
                 print("select your nc file at Rdata format")
                 ## provient de :
-                ## precipitation <- extract_nc_value(2014,2019) avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc
-                ## mean_temp <- extract_nc_value(2014,2019) avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc
+                ## precipitation <- extract_nc_value(2014,2019) # avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc
+                ## mean_temp <- extract_nc_value(2014,2019) # avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc
                 ## save(list=c("precipitation","mean_temp"),file="XXX.Rdata")
                 load(file.choose())
             } else { # ELSE  if(is.null(lnc))
@@ -1142,7 +1164,7 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_lo
                                         # cat(i,"")
             if (i%%100==1){print(paste(i,Sys.time()))}
             MatchLongLat=match(paste(dsample$longitude[i],dsample$latitude[i]),paste(dsite$longitude,dsite$latitude))
-            MatchDate=match(dsample$DATE_POSIX[i],as.character(point.TM$date_extract))
+            MatchDate=match(dsample$date[i],as.character(point.TM$date_extract))
             T1=point.TM[MatchDate,(MatchLongLat+1)]
             D1=point.TM$date_extract[MatchDate]
             J1=yday(D1)
@@ -1150,6 +1172,7 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_lo
             N1=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J1_30)))
             weather$AT1[i]=T1-N1
 
+            browser()
             T3=mean(point.TM[(MatchDate-2):MatchDate,(MatchLongLat+1)])
             J3=c((J1-2):J1) #last 3 days
             J3=J3-floor((J3-1)/365)*365 #to keep in 1:365 domain
@@ -1188,3 +1211,32 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_lo
 
 }
 
+
+
+prepare_weatherRdata <- function(firstYear=1950,lastYear=NULL,repOut="data/") {
+    if(is.null(lastYear)) lastYear <- as.numeric(format(Sys.time(),"%Y"))
+    vecAn_start <- seq(firstYear,lastYear,5)
+    vecAn_end <- sort(union(seq(firstYear+4,lastYear,5),lastYear))
+    dAn <- data.frame(start=vecAn_start,end=vecAn_end)
+    dAn$filename <- paste0(repOut,"data_meteo_temp_prec_ens_mean_0.25deg_reg_v20_",dAn$start,"-",dAn$end,".Rdata")
+    print(dAn)
+    flush.console()
+
+    for(i in 1:nrow(dAn)) {
+        cat("\n",paste(dAn[i,],collapse=" | "),"\n\n")
+        flush.console()
+        cat(" - precipitation: avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc\n")
+        flush.console()
+        precipitation <- extract_nc_value(dAn$start[i],dAn$end[i]) # avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc
+        cat(" - mean_temp : avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc\n")
+        flush.console()
+        mean_temp <- extract_nc_value(dAn$start[i],dAn$end[i]) # avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc
+        file <- dAn$filename[i]
+        cat("SAVE ->",file)
+        flush.console()
+        save(list=c("precipitation","mean_temp"),file=file)
+        cat("   DONE!\n\n")
+    }
+
+    write.csv(dAn,paste0(repOut,"table_weather_Rdata_names.csv"))
+}
