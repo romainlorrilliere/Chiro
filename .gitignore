@@ -8,3 +8,16 @@ data/
 *.r~
 BCI2017.R
 monScript_capture.r
+sig/
+*.dbf
+*.prj
+*.qpj
+*.shp
+*.shx
+*.png
+*.pdf
+*.pjg
+*.zip
+*.gz
+*.Rdata
+*.rds
