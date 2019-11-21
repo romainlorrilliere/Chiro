@@ -1,0 +1,10 @@
+output/
+data_raw/
+data_weather/
+data/
+.Rproj.user
+.Rhistory
+*.html
+*.r~
+BCI2017.R
+monScript_capture.r
