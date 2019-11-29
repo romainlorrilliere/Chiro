@@ -6,6 +6,14 @@ require(sf)
 
 
 
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title
+##' @param d
+##' @return
+##' @author
+##' @example descri_annee_data(d="data/data_2019-06-06_clean_loc_sunset.csv")
 
 descri_annee_data <- function(d="data/data_2019-06-06_clean_loc_sunset.csv") {
    ## d="data/data_2019-06-06_clean_loc_sunset.csv"
