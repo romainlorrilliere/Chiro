@@ -21,3 +21,6 @@ sig/
 *.gz
 *.Rdata
 *.rds
+*.r#
+*.rmd~
+*.nc
