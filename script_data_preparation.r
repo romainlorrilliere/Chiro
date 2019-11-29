@@ -102,7 +102,7 @@ my_import_fread <- function(d,descri=NULL) {
     } else { # ELSE if (is.null(d))
         if(class(d)[1]=="character") {
             if(file.exists(d)) {
-                cat("Importation:",d)
+                cat("Importation:",d,"\n")
                 d <- fread(d)
                 cat("  DONE !\n")
             } else {
@@ -882,11 +882,95 @@ add_sunset_sunrise <- function(d="data/data_2019-06-06_clean_loc.csv",output=FAL
 
 
 
+add_orderOcc <- function(d="data/data_2019-06-06_clean_loc_sunset.csv",output=FALSE) {
+
+    d="data/data_2019-06-06_clean_loc_sunset.csv";output=FALSE
+    library(data.table)
+    library(dplyr)
+    if(class(d)[1]=="character") d <- fread(d)
+
+    d$AGE2 <- ifelse(is.na(d$AGE),"U",ifelse(d$AGE %in% c("JUVENILE","IMMATURE"),"JUV","AD"))
+    d$SEXE[is.na(d$SEXE)] <- "U"
+
+    dd <- d[,c("pk_data","INSEE","DATE_NIGHT_POSIX","periode","diff_sunset_heure","TAXON","SEXE","AGE2")]
+    dd <- dd[!(is.na(diff_sunset_heure)),,]
+    dd <- dd[order(INSEE,DATE_NIGHT_POSIX,diff_sunset_heure,TAXON)]
+
+    dd <- dd[,orderIndSp:= 1:.N,by=.(INSEE,DATE_NIGHT_POSIX,periode,TAXON)]
+
+    ddmax <- aggregate(orderIndSp ~INSEE+DATE_NIGHT_POSIX+TAXON, dd,max)
+    colnames(ddmax)[ncol(ddmax)] <- "ntotSp"
+
+    dd <- inner_join(dd,ddmax)
+
+    dd$propOrderIndSp <- dd$orderIndSp/dd$ntotSp
+
+
+    dd <- inner_join(dd,dw)
+
+    dd5 <- data.table(subset(dd,ntotSp>5))
+    dd5 <- dd5[,proporderIndSp_med := propOrderIndSp>0.5,by=.(INSEE,DATE_NIGHT_POSIX,periode,TAXON)]
+    dd5 <- dd5[,proporderIndSp_med := ropOrderIndSp>0.5,by=.(INSEE,DATE_NIGHT_POSIX,periode,TAXON)]
+
+    dd5med <- aggregate(diff_sunset_heure~INSEE+DATE_NIGHT_POSIX+periode+TAXON,dd5[propOrderIndSp>0.5,,],min)
+    dd5med$variable <- "mediane"
+    dd5ICinf50 <- aggregate(diff_sunset_heure~INSEE+DATE_NIGHT_POSIX+periode+TAXON,dd5[propOrderIndSp>0.25,,],min)
+    dd5ICinf50$variable <- "ICinf50"
+    dd5ICsup50 <- aggregate(diff_sunset_heure~INSEE+DATE_NIGHT_POSIX+periode+TAXON,dd5[propOrderIndSp>0.75,,],min)
+    dd5ICsup50$variable <- "ICsup50"
+
+    dd5gg <- rbind(dd5med,rbind(dd5ICinf50,dd5ICsup50))
+    dd5gg <- inner_join(dd5gg,dw)
+
+    dd5gg1 <- dd5gg[,c("INSEE","DATE_NIGHT_POSIX","periode","TAXON","diff_sunset_heure","variable","AT1")]
+    colnames(dd5gg1)[ncol(dd5gg1)] <- "anomalie_temp"
+    dd5gg1$window <- "1 jour"
+
+    dd5gg1 <- dd5gg[,c("INSEE","DATE_NIGHT_POSIX","periode","TAXON","diff_sunset_heure","variable","AT1")]
+    colnames(dd5gg1)[ncol(dd5gg1)] <- "anomalie_temp"
+    dd5gg1$window <- "1 jour"
+
+
+    dd5gg3 <- dd5gg[,c("INSEE","DATE_NIGHT_POSIX","periode","TAXON","diff_sunset_heure","variable","AT3")]
+    colnames(dd5gg3)[ncol(dd5gg3)] <- "anomalie_temp"
+    dd5gg3$window <- "3 jours"
+
+
+    dd5gg9 <- dd5gg[,c("INSEE","DATE_NIGHT_POSIX","periode","TAXON","diff_sunset_heure","variable","AT9")]
+    colnames(dd5gg9)[ncol(dd5gg9)] <- "anomalie_temp"
+    dd5gg9$window <- "9 jours"
+
+    dd5ggBis <- rbind(dd5gg1,rbind(dd5gg3,dd5gg9))
+
+    vecSp <- unique(dd5gg$TAXON)
+    vecPeriode <- c("1_juin_juillet","2_aout_octobre")
+    for(sp in vecSp)  {
+                                        #sp <- "Pipistrellus pipistrellus"
+        dd5gg_sp <- subset(dd5ggBis,TAXON==sp & periode %in% vecPeriode)
+        gg <- ggplot(dd5gg_sp,aes(x=anomalie_temp,y=diff_sunset_heure,group=variable,colour=variable)) + geom_smooth(se=FALSE)+facet_grid(periode~window,scales="free_y")
+        gg <- gg + labs(title=sp,x="Anomalie de température",y="Heure après le coucher du soleil",colour="")
+        gg
+        ggfile <- paste0("output/pheno_temp/pheno_temp_",sp,".png")
+        cat("plot -> ",ggfile,"\n")
+        ggsave(ggfile,gg)
+
+    } #END for(sp in vecSp)
+
+}
+
+
+
+
+
+
+
 add_weather <- function(d="data/data_2019-06-06_clean_loc_sunset.csv",output=FALSE,save=saveStep,repout=NULL,fileoutput=NULL,fileoutput_weather=NULL) {
 
+    d="data/data_2019-06-06_clean_loc_sunset.csv";output=FALSE;save=TRUE;repout=NULL;fileoutput=NULL;fileoutput_weather=NULL
                                         #d="data/data_2019-06-06_clean_loc.csv";output=FALSE
     library(data.table)
-    if(class(d)[1]=="character") d <- fread(d)
+
+    d <- my_import_fread(d,"ex: data/data_2019-06-06_clean_loc.csv")
 
 ##    FTempMean="library/tg_0.25deg_reg_2011-2017_v17.0_2.nc"
 ##
@@ -992,82 +1076,6 @@ add_weather <- function(d="data/data_2019-06-06_clean_loc_sunset.csv",output=FAL
 
 
 
-add_orderOcc <- function(d="data/data_2019-06-06_clean_loc_sunset.csv",output=FALSE) {
-
-    d="data/data_2019-06-06_clean_loc_sunset.csv";output=FALSE
-    library(data.table)
-    library(dplyr)
-    if(class(d)[1]=="character") d <- fread(d)
-
-    d$AGE2 <- ifelse(is.na(d$AGE),"U",ifelse(d$AGE %in% c("JUVENILE","IMMATURE"),"JUV","AD"))
-    d$SEXE[is.na(d$SEXE)] <- "U"
-
-    dd <- d[,c("pk_data","INSEE","DATE_NIGHT_POSIX","periode","diff_sunset_heure","TAXON","SEXE","AGE2")]
-    dd <- dd[!(is.na(diff_sunset_heure)),,]
-    dd <- dd[order(INSEE,DATE_NIGHT_POSIX,diff_sunset_heure,TAXON)]
-
-    dd <- dd[,orderIndSp:= 1:.N,by=.(INSEE,DATE_NIGHT_POSIX,periode,TAXON)]
-
-    ddmax <- aggregate(orderIndSp ~INSEE+DATE_NIGHT_POSIX+TAXON, dd,max)
-    colnames(ddmax)[ncol(ddmax)] <- "ntotSp"
-
-    dd <- inner_join(dd,ddmax)
-
-    dd$propOrderIndSp <- dd$orderIndSp/dd$ntotSp
-
-
-    dd <- inner_join(dd,dw)
-
-    dd5 <- data.table(subset(dd,ntotSp>5))
-    dd5 <- dd5[,proporderIndSp_med := propOrderIndSp>0.5,by=.(INSEE,DATE_NIGHT_POSIX,periode,TAXON)]
-    dd5 <- dd5[,proporderIndSp_med := ropOrderIndSp>0.5,by=.(INSEE,DATE_NIGHT_POSIX,periode,TAXON)]
-
-    dd5med <- aggregate(diff_sunset_heure~INSEE+DATE_NIGHT_POSIX+periode+TAXON,dd5[propOrderIndSp>0.5,,],min)
-    dd5med$variable <- "mediane"
-    dd5ICinf50 <- aggregate(diff_sunset_heure~INSEE+DATE_NIGHT_POSIX+periode+TAXON,dd5[propOrderIndSp>0.25,,],min)
-    dd5ICinf50$variable <- "ICinf50"
-    dd5ICsup50 <- aggregate(diff_sunset_heure~INSEE+DATE_NIGHT_POSIX+periode+TAXON,dd5[propOrderIndSp>0.75,,],min)
-    dd5ICsup50$variable <- "ICsup50"
-
-    dd5gg <- rbind(dd5med,rbind(dd5ICinf50,dd5ICsup50))
-    dd5gg <- inner_join(dd5gg,dw)
-
-    dd5gg1 <- dd5gg[,c("INSEE","DATE_NIGHT_POSIX","periode","TAXON","diff_sunset_heure","variable","AT1")]
-    colnames(dd5gg1)[ncol(dd5gg1)] <- "anomalie_temp"
-    dd5gg1$window <- "1 jour"
-
-    dd5gg1 <- dd5gg[,c("INSEE","DATE_NIGHT_POSIX","periode","TAXON","diff_sunset_heure","variable","AT1")]
-    colnames(dd5gg1)[ncol(dd5gg1)] <- "anomalie_temp"
-    dd5gg1$window <- "1 jour"
-
-
-    dd5gg3 <- dd5gg[,c("INSEE","DATE_NIGHT_POSIX","periode","TAXON","diff_sunset_heure","variable","AT3")]
-    colnames(dd5gg3)[ncol(dd5gg3)] <- "anomalie_temp"
-    dd5gg3$window <- "3 jours"
-
-
-    dd5gg9 <- dd5gg[,c("INSEE","DATE_NIGHT_POSIX","periode","TAXON","diff_sunset_heure","variable","AT9")]
-    colnames(dd5gg9)[ncol(dd5gg9)] <- "anomalie_temp"
-    dd5gg9$window <- "9 jours"
-
-    dd5ggBis <- rbind(dd5gg1,rbind(dd5gg3,dd5gg9))
-
-    vecSp <- unique(dd5gg$TAXON)
-    vecPeriode <- c("1_juin_juillet","2_aout_octobre")
-    for(sp in vecSp)  {
-                                        #sp <- "Pipistrellus pipistrellus"
-        dd5gg_sp <- subset(dd5ggBis,TAXON==sp & periode %in% vecPeriode)
-        gg <- ggplot(dd5gg_sp,aes(x=anomalie_temp,y=diff_sunset_heure,group=variable,colour=variable)) + geom_smooth(se=FALSE)+facet_grid(periode~window,scales="free_y")
-        gg <- gg + labs(title=sp,x="Anomalie de température",y="Heure après le coucher du soleil",colour="")
-        gg
-        ggfile <- paste0("output/pheno_temp/pheno_temp_",sp,".png")
-        cat("plot -> ",ggfile,"\n")
-        ggsave(ggfile,gg)
-
-    } #END for(sp in vecSp)
-
-}
-
 
 
 
@@ -1088,21 +1096,18 @@ add_orderOcc <- function(d="data/data_2019-06-06_clean_loc_sunset.csv",output=FA
 ##' @param fileouput name of file to save the table
 ##' @return la table sample avec les anomalies des variables météo désiré à 1,3,9,27 et 81 jours
 ##' @author Romain Lorrilliere à partir d'un code de Yves Bas
-get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_local=TRUE,nc_extract=FALSE,nc_data=NULL,var=c("precipitation","mean_temp"),dsample_colnames=c("site_id"="site_id","date"="date","longitude"="longitude","latitude"="latitudeWGS84"),output=TRUE,save=FALSE,fileouput=NULL) {
+get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_local=TRUE,nc_extract=FALSE,nc_data=NULL,nc_rep=NULL,var=c("precipitation","mean_temp"),dsample_colnames=c("site_id"="site_id","date"="date","longitude"="longitude","latitude"="latitudeWGS84"),output=TRUE,save=FALSE,fileouput=NULL) {
 
     library(data.table)
     library(RNetCDF)
     library(climateExtract) #https://github.com/RetoSchmucki/climateExtract
     library(ncdf4)
 
-    ##    dsample=NULL;first_year=NULL;last_year=NULL;nc_local=TRUE;nc_extract=FALSE;nc_data=NULL;var=c("precipitation","mean_temp");dsample_colnames=c("site_id"="id_site","date"="date","longitude"="longitude_wgs84","latitude"="latitudeWGS84");output=TRUE;save=FALSE;fileoutput=NULL
+      dsample=dsample;first_year=NULL;last_year=NULL;nc_local=TRUE;nc_extract=FALSE;nc_data=NULL;var=c("precipitation","mean_temp");dsample_colnames=c("site_id"="INSEE","date"="DATE_NIGHT_POSIX","longitude"="X_CENTROID","latitude"="Y_CENTROID");output=TRUE;save=FALSE;fileoutput=NULL
 
-    if (is.null(dsample)) {
-        print("select your sample file")
-        dsample <- fread(file.choose())
-    } else {
-        if(class(dsample)[1]=="character") dsample <- fread(dsample) else dsample <- data.table(dsample)
-    }
+
+    dsample <- my_import_fread(dsample,"file of sample data")
+    nc_data <- my_import_fread(nc_data,"file of sample data")
 
 
     dsample_colnames2 <- setdiff(names(dsample_colnames),colnames(dsample))
@@ -1214,11 +1219,14 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_lo
 
 
 prepare_weatherRdata <- function(firstYear=1950,lastYear=NULL,repOut="data/") {
+                                        #  firstYear=1950;lastYear=NULL;repOut="data/"
+      library(climateExtract) #https://github.com/RetoSchmucki/climateExtract
     if(is.null(lastYear)) lastYear <- as.numeric(format(Sys.time(),"%Y"))
     vecAn_start <- seq(firstYear,lastYear,5)
     vecAn_end <- sort(union(seq(firstYear+4,lastYear,5),lastYear))
     dAn <- data.frame(start=vecAn_start,end=vecAn_end)
     dAn$filename <- paste0(repOut,"data_meteo_temp_prec_ens_mean_0.25deg_reg_v20_",dAn$start,"-",dAn$end,".Rdata")
+    dAn$start_real <- ifelse(dAn$start>1950,dAn$start -1,1950)
     print(dAn)
     flush.console()
 
@@ -1227,10 +1235,10 @@ prepare_weatherRdata <- function(firstYear=1950,lastYear=NULL,repOut="data/") {
         flush.console()
         cat(" - precipitation: avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc\n")
         flush.console()
-        precipitation <- extract_nc_value(dAn$start[i],dAn$end[i]) # avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc
+        precipitation <- extract_nc_value(dAn$start_real[i],dAn$end[i]) # avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc
         cat(" - mean_temp : avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc\n")
         flush.console()
-        mean_temp <- extract_nc_value(dAn$start[i],dAn$end[i]) # avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc
+        mean_temp <- extract_nc_value(dAn$start_real[i],dAn$end[i]) # avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc
         file <- dAn$filename[i]
         cat("SAVE ->",file)
         flush.console()
@@ -1239,4 +1247,263 @@ prepare_weatherRdata <- function(firstYear=1950,lastYear=NULL,repOut="data/") {
     }
 
     write.csv(dAn,paste0(repOut,"table_weather_Rdata_names.csv"))
+}
+
+
+assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FALSE,nc_local=TRUE,nc_extract=FALSE,nc_data="data_weather/table_weather_Rdata_names.csv",nc_rep="data_weather",file_nc_out=NULL,var=c("precipitation","mean_temp"),dsample_colnames=c("site_id"="site_id","date"="date","longitude"="longitude","latitude"="latitudeWGS84"),output=TRUE,save=FALSE,fileouput=NULL) {
+
+  #  first_year=1950;last_year=2000;nc_one_file=FALSE;nc_local=TRUE;nc_extract=FALSE;nc_data="data_weather/table_weather_Rdata_names.csv";nc_rep="data_weather";var=c("precipitation","mean_temp");dsample_colnames=c("site_id"="site_id","date"="date","longitude"="longitude","latitude"="latitudeWGS84");output=TRUE;save=FALSE;fileouput=NULL;file_nc_out=NULL
+
+    library(lubridate)
+
+    start_process <- Sys.time()
+
+    cat("\n Start:",format(start_process,"%Y-%m-%d %H:%M"),"\n")
+
+    if(nc_one_file) {
+        lnc <- list()
+        if(nc_local) {
+            if(nc_extract) {
+                for(v in var){
+                    cat(" - Variable:",v,"\n-----------------------------\n\n")
+                    lnc[[v]] <- extract_nc_value(first_year,last_year,local_file = TRUE)
+                } # END for(v in var){
+            } else { # ELSE  if(nc_extract)
+                if(is.null(nc_data)){
+                    print("select your nc file at Rdata format")
+                    ## provient de :
+                    ## precipitation <- extract_nc_value(2014,2019) # avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc
+                    ## mean_temp <- extract_nc_value(2014,2019) # avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc
+                    ## save(list=c("precipitation","mean_temp"),file="XXX.Rdata")
+                    load(file.choose())
+                } else { # ELSE  if(is.null(lnc))
+                    load(nc_data)
+                }# END ELSE  if(is.null(lnc))
+                for(v in var)
+                    lnc[[v]] <-  get(v)
+            } # END  ELSE  if(nc_extract)
+        } else { # ELSE if(dnc_local)
+            for(v in var){
+                cat(" - Variable:",v,"\n-----------------------------\n\n")
+                lnc[[v]] <- extract_nc_value(first_year,last_year,local_file = FALSE, clim_variable = v, grid_size = 0.25)
+            } # END for(v in var){
+        }# END ELSE if(dnc_local)
+    } else { # ELSE if(nc_one_file)
+        if(is.null(nc_rep)) nc_rep <- choose.dir()
+        ## nc_data table de description des Rdata
+        nc_data_table<- my_import_fread(nc_data)
+        if(!is.null(first_year)) nc_data_table <- subset(nc_data_table,end >= first_year)
+        if(!is.null(last_year)) nc_data_table <- subset(nc_data_table,start <= last_year)
+        nc_data <- NULL
+    }# END ELSE if(nc_one_file)
+
+
+    if(nc_one_file) {
+        lnc_mean <- list()
+        for(v in var){
+            cat("Variable:",v,"\n")
+            lnc[[v]]$julian_day <- yday(as.Date(lnc[[v]]$date_extract))
+
+            array_sum <- array(NA,dim=c(dim(lnc[[v]]$value_array)[1],dim(lnc[[v]]$value_array)[2],366))
+            array_nb <- array(NA,dim=c(dim(lnc[[v]]$value_array)[1],dim(lnc[[v]]$value_array)[2],366))
+
+            cat(" - Mean assessment\n")
+
+            for(j in 1:366){
+                array_j <- lnc[[v]]$value_array[,,which(lnc[[v]]$julian_day == j)]
+
+                array_sum[,,j] <- rowSums(array_j,dims=2,na.rm=TRUE)
+                array_j[!is.na(array_j)] <- 1
+                array_j[is.na(array_j)] <- 0
+                array_nb[,,j] <- rowSums(array_j,dims=2,na.rm=TRUE)
+            } #END for(j in 1:366){
+            array_mean <- array_sum/array_nb
+
+            array_sum_diff <- array(NA,dim=c(dim(lnc[[v]]$value_array)[1],dim(lnc[[v]]$value_array)[2],366))
+
+            cat(" - Sd assessment\n")
+
+            for(j in 1:366){
+                array_j <- lnc[[v]]$value_array[,,which(lnc[[v]]$julian_day == j)]
+                for(z in 1:dim(array_j)[3]) array_j[,,z] <- (array_j[,,z]-array_mean[,,j])^2
+                array_sum_diff[,,j] <- rowSums(array_j,dims=2,na.rm=TRUE)
+            } #END for(j in 1:366){
+            array_sd <- array_sum_diff/array_nb
+
+
+            years <- unique(year(lnc[[v]]$date_extract))
+
+
+            date2000 <- format(as.Date(paste0(last_year,"-",1:366),"%Y-%j"),"%m-%d")
+
+            lnc_mean[[v]] <- list(variable_name=lnc[[v]]$variable_name,value_mean_array=array_mean,value_sd_array=array_sd,longitude=lnc[[v]]$longitude,latitude=lnc[[v]]$latitude,date_extract=date2000,julian_day=1:366,years=years)
+        } #END for(v in var){
+
+
+
+    } else {# ELSE  if(nc_one_file) {
+
+        larray <- NULL
+        lnc <- list()
+        cat("\n-------------------\n- Mean assessment -\n-------------------\n")
+
+        for(i in 1:nrow(nc_data_table)) {
+            file_i <- paste0(nc_rep,"/",nc_data_table$filename[i])
+            start_i <-  nc_data_table$start[i]
+            end_i <-  nc_data_table$end[i]
+            start <- max(start_i,first_year)
+            end <- min(end_i,last_year)
+            cat("LOAD:",file_i)
+            load(file_i)
+            cat("  DONE\n")
+
+            cat(" 0- Initialisation\n")
+            lnc <- list()
+            for(v in var) {
+                cat("  variable:",v,"\n")
+                lnc[[v]] <-  get(v)
+                lnc[[v]][["year"]] <- year(lnc[[v]]$date_extract)
+                lnc[[v]]$value_array <- lnc[[v]]$value_array[,,which(lnc[[v]]$year >= start & lnc[[v]]$year <= end)]
+                lnc[[v]]$year <- lnc[[v]]$year[which(lnc[[v]]$year >= start & lnc[[v]]$year <= end)]
+                lnc[[v]]$date_extract <- lnc[[v]]$date_extract[which(lnc[[v]]$year >= start & lnc[[v]]$year <= end)]
+                lnc[[v]]$julian_day <- yday(as.Date(lnc[[v]]$date_extract))
+            }
+
+             ## initialisation des sortie et du calcul
+            if(is.null(larray)) {
+                larray <- list()
+                for(vv in var) {
+                    array_sum <- array(0,dim=c(dim(lnc[[vv]]$value_array)[1],dim(lnc[[vv]]$value_array)[2],365))
+                    array_nb <- array(0,dim=c(dim(lnc[[vv]]$value_array)[1],dim(lnc[[vv]]$value_array)[2],365))
+                    array_sum_diff <- array(0,dim=c(dim(lnc[[vv]]$value_array)[1],dim(lnc[[vv]]$value_array)[2],365))
+                    larray[[vv]] <- list(array_sum=array_sum,array_nb=array_nb,array_sum_diff=array_sum_diff)
+                }
+            }
+
+
+            cat(" 1- somme sur jour julien\n")
+            for(v in var) {
+                cat("  variable:",v,"\n")
+                cat("     boucle jour julien: ")
+                for(j in 1:365){
+                    ##                    if(v=="mean_temp") browser()
+                    if(j %% 30 == 0) cat(j,"")
+                    array_j <- lnc[[v]]$value_array[,,which(lnc[[v]]$julian_day == j)]
+
+                    if(length(dim(array_j))==3) {
+                        larray[[v]]$array_sum[,,j] <- larray[[v]]$array_sum[,,j] + rowSums(array_j,dims=2,na.rm=TRUE)
+                        array_j[!is.na(array_j)] <- 1
+                        array_j[is.na(array_j)] <- 0
+                        larray[[v]]$array_nb[,,j] <- larray[[v]]$array_nb[,,j] + rowSums(array_j,dims=2,na.rm=TRUE)
+                    } else { # ELSE if(length(dim(array_j))==3) {
+                        larray[[v]]$array_sum[,,j] <- larray[[v]]$array_sum[,,j] + array_j
+                        array_j[!is.na(array_j)] <- 1
+                        array_j[is.na(array_j)] <- 0
+                        larray[[v]]$array_nb[,,j] <- larray[[v]]$array_nb[,,j] + array_j
+                    } # END ELSE if(length(dim(array_j)) == 3) {
+
+                } #END for(j in 1:366){
+                cat("\n")
+            } #END  for(v in var) {
+            cat("\n")
+            for(v in var)  rm(v)
+
+        }# END for(i in 1:nrow(nc_data_table)) {
+
+        cat("  2- calcul moyenne:\n")
+        for(v in var) {
+            cat("  variable:",v,"   | ")
+            for(i in 1:nrow(nc_data_table)) {
+                cat(i,"")
+                larray[[v]][["array_mean"]] <- larray[[v]]$array_sum/larray[[v]]$array_nb
+            }
+            cat("\n")
+        }
+
+        cat("\n-----------------\n- Sd assessment -\n-----------------\n")
+        for(i in 1:nrow(nc_data_table)) {
+            file_i <- paste0(nc_rep,"/",nc_data_table$filename[i])
+            start_i <-  nc_data_table$start[i]
+            end_i <-  nc_data_table$end[i]
+            start <- max(start_i,first_year)
+            end <- min(end_i,last_year)
+            cat("LOAD:",file_i)
+            load(file_i)
+            cat("  DONE\n")
+
+             cat(" 0- Initialisation\n")
+            lnc <- list()
+            for(v in var) {
+                cat("  variable:",v,"\n")
+                lnc[[v]] <-  get(v)
+                lnc[[v]][["year"]] <- year(lnc[[v]]$date_extract)
+                lnc[[v]]$value_array <- lnc[[v]]$value_array[,,which(lnc[[v]]$year >= start & lnc[[v]]$year <= end)]
+                lnc[[v]]$year <- lnc[[v]]$year[which(lnc[[v]]$year >= start & lnc[[v]]$year <= end)]
+                lnc[[v]]$date_extract <- lnc[[v]]$date_extract[which(lnc[[v]]$year >= start & lnc[[v]]$year <= end)]
+                lnc[[v]]$julian_day <- yday(as.Date(lnc[[v]]$date_extract))
+
+            }
+
+            cat(" 1- somme ecart moyenne sur jour julien\n")
+
+            for(v in var) {
+                cat("  variable:",v,"\n")
+                cat("     boucle jour julien: ")
+                for(j in 1:365){
+                    if(j %% 30 == 0) cat(j,"")
+                    ##browser()
+                    array_j <- lnc[[v]]$value_array[,,which(lnc[[v]]$julian_day == j)]
+                    if(length(dim(array_j)) == 3) {
+                        for(z in 1:dim(array_j)[3])
+                            array_j[,,z] <- (array_j[,,z]- larray[[v]][["array_mean"]][,,j])^2
+
+                        larray[[v]]$array_sum_diff[,,j] <- larray[[v]]$array_sum_diff[,,j] + rowSums(array_j,dims=2,na.rm=TRUE)
+                    } else { # ELSE if(length(dim(array_j)) == 3) {
+                        array_j <- (array_j-larray[[v]][["array_mean"]][,,j])^2
+                        larray[[v]]$array_sum_diff[,,j] <- larray[[v]]$array_sum_diff[,,j] + array_j
+                    } # END ELSE if(length(dim(array_j)) == 3) {
+
+                } #END for(j in 1:366){
+                cat("\n")
+            } #END  for(v in var) {
+            cat("\n")
+        }# END for(i in 1:nrow(nc_data_table)) {  1- somme ecart moyenne sur jour julien
+        cat("  2- calcul ecart type:\n")
+        for(v in var) {
+            cat("  variable:",v,"   | ")
+            for(i in 1:nrow(nc_data_table)) {
+                cat(i,"")
+                larray[[v]][["array_sd"]] <- larray[[v]]$array_sum_diff/larray[[v]]$array_nb
+            }
+            cat("\n")
+        } # END for(v in var) {  2- calcul ecart type:
+
+
+        cat("\n--------------------------\n- Preparation sauvegarde -\n--------------------------\n")
+        lnc_mean <- list()
+          cat("  variable:",v,"\n")
+        for(v in var) {
+        years <- unique(larray[[v]]$year)
+        date_M_J<- format(as.Date(paste0(last_year,"-",1:366),"%Y-%j"),"%m-%d")
+
+        lnc_mean[[v]] <- list(variable_name=lnc[[v]]$variable_name,value_mean_array=larray[[v]]$array_mean,value_sd_array=larray[[v]]$array_sd,longitude=lnc[[v]]$longitude,latitude=lnc[[v]]$latitude,date_extract=date_M_J,julian_day=1:366,years=years)
+        } # END for( v in var) {
+
+    }# END ELSE  if(nc_one_file) {
+
+    if(is.null(file_nc_out))
+        file_nc_out <- paste0("normal_weather_",paste(var,collapse="_"),"_",min(years),"-",max(years),".Rdata")
+
+    file_save_nc <- paste0(nc_rep,"/",file_nc_out)
+
+    cat("  -->", file_save_nc)
+    save(lnc_mean,file=file_save_nc)
+    cat("   DONE!\n")
+
+   end_process <- Sys.time()
+
+    cat("\n End:",format(end_process,"%Y-%m-%d %H:%M"),"\n")
+    duration <- round(difftime(end_process,start_process,units="mins"))
+    cat("    Duration:",duration,"minutes\n")
+
 }
