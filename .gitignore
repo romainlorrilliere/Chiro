@@ -24,3 +24,4 @@ sig/
 *.r#
 *.rmd~
 *.nc
+isd-history.csv
