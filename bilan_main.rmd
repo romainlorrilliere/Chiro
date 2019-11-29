@@ -1,0 +1,89 @@
+---
+author: "Romain Lorrilliere & Julie Marmet (CESCo, MNHN)"
+params:
+ year: 2018
+ origine: "GCPC"
+ set_output: "html_document"
+output: set_output
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning=FALSE,message=FALSE, eval=TRUE)
+source("fun_bilan.r")
+set_date <-  as.Date(Sys.time())
+set_title <- paste0(params$origine," - Rapport ",params$year," des captures de Chiroptères")
+
+```
+
+
+---
+title: "`r set_title`" 
+date: "`r set_date`"
+
+---
+
+
+
+
+```{r}
+## List all packages needed
+library(data.table)
+library(lubridate)
+```
+
+
+```{r}
+## Read and clean the dataset
+d <- fread("data/data_capt_20191024_clean_complet_clean_loc.csv")
+d$DATE_POSIX <- as.POSIXct(paste(d$ANNEE,sprintf("%02d",d$MOIS),d$JOUR,sep="-"))
+
+d <- subset(d,ANNEE <= params$year)
+dsample <-  unique(d[,c("ORIGINE","DATE_POSIX","JOUR_ANNEE","ANNEE","X_CENTROID","Y_CENTROID","INSEE"),with=FALSE])
+
+
+```
+
+# L'échantillonnage
+
+
+## Les communes et les captures de chauves-souris
+
+```{r}
+## quelques stat de description du suivi local
+dsample_gr <- subset(dsample, ORIGINE == params$origine)
+first_year <- min(dsample$ANNEE)
+nb_site <- length(unique(dsample$INSEE))
+nb_site_year <- length(unique(dsample[dsample$ANNEE == params$year]$INSEE))
+first_year_gr <- min(dsample_gr$ANNEE)
+nb_site_gr <- length(unique(dsample_gr$INSEE))
+nb_site_year_gr <- length(unique(dsample_gr[dsample_gr$ANNEE == params$year]$INSEE))
+
+
+```
+
+En France, depuis `r first_year` (première données de capture dans la
+base de données du MNHN), des opérations de captures ont été réalisé
+dans `r nb_site` communes. Les données de `r params$origine` débute en
+`r first_year_gr` et on été réalisé dans `r nb_site_gr`.
+En `r params$year`, en France `r nb_site_year` et dans les données 
+`r params$origine` `r nb_site_year_gr` communes ont accueilli des
+opérations de capture de chauve-souris.
+
+
+```{r,eval=FALSE, fig.cap="La variation temporelle du nombre de site de capture en France"}
+trend_fr_sample_chirod(sample,group = params$origine)
+
+```
+### Les sites en France
+
+```{r, fig.cap="La localisation des captures chiroptères en France"}
+map_fr_chiro(dsample,last_year=params$year,group = params$origine)
+```
+
+### Les communes avec site de capute
+
+```{r fig.cap="Les communes et les captures chiroptères de `r params$origine`"}
+map_local_commune_chiro(dsample,last_year=params$year,group = params$origine,dsn_commune="C:\\git\\GIS\\communes-20190101\\communes-20190101.shp")
+```
+
