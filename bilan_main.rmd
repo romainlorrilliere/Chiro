@@ -1,5 +1,6 @@
 ---
 author: "Romain Lorrilliere & Julie Marmet (CESCo, MNHN)"
+date: "`r Sys.time()`"
 params:
  year: 2018
  origine: "GCPC"
@@ -13,6 +14,17 @@ knitr::opts_chunk$set(echo = FALSE, warning=FALSE,message=FALSE, eval=TRUE)
 source("fun_bilan.r")
 set_date <-  as.Date(Sys.time())
 set_title <- paste0(params$origine," - Rapport ",params$year," des captures de Chiroptères")
+if (params$set_output == "pdf" ) table_captions <- captioner::captioner(prefix="Tab.") else table_captions <- captioner::captioner(prefix="Tab.")
+if (params$set_output == "pdf" )  figure_captions <- captioner::captioner(prefix="Fig.") else figure_captions <- captioner::captioner(prefix="Fig.")
+
+
+t.ref <- function(label){
+  stringr::str_extract(table_captions(label), "[^:]*")
+}
+
+f.ref <- function(label){
+  stringr::str_extract(figure_captions(label), "[^:]*")
+}
 
 ```
 
@@ -30,10 +42,16 @@ date: "`r set_date`"
 ## List all packages needed
 library(data.table)
 library(lubridate)
+library(ggpubr)
+library(knitr)
+
 ```
 
 
 ```{r}
+##params <- data.frame(year= 2016,origine= "GCPC", set_output= "html_document",stringsAsFactors=FALSE)
+
+
 ## Read and clean the dataset
 d <- fread("data/data_capt_20191024_clean_complet_clean_loc.csv")
 d$DATE_POSIX <- as.POSIXct(paste(d$ANNEE,sprintf("%02d",d$MOIS),d$JOUR,sep="-"))
@@ -42,12 +60,24 @@ d <- subset(d,ANNEE <= params$year)
 dsample <-  unique(d[,c("ORIGINE","DATE_POSIX","JOUR_ANNEE","ANNEE","X_CENTROID","Y_CENTROID","INSEE"),with=FALSE])
 
 
-```
+ ```
+
+`r if(params$set_output == "pdf"){"
+
+\\newpage 
+\\tableofcontents 
+\\listoffigures
+\\listoftables
+\\newpage
+
+"}`
+
+
 
 # L'échantillonnage
 
 
-## Les communes et les captures de chauves-souris
+## Le nombre de communes échantillonnées
 
 ```{r}
 ## quelques stat de description du suivi local
@@ -59,31 +89,183 @@ first_year_gr <- min(dsample_gr$ANNEE)
 nb_site_gr <- length(unique(dsample_gr$INSEE))
 nb_site_year_gr <- length(unique(dsample_gr[dsample_gr$ANNEE == params$year]$INSEE))
 
+nb_nuit_noloc_gr <- length(which(is.na(dsample_gr$X_CENTROID)))
+nb_nuit_gr <- nrow(dsample_gr)
+prop_nuit_noloc_gr <- round(nb_nuit_noloc_gr / nb_nuit_gr * 100,2)
+
+nb_nuit_noloc <- length(which(is.na(dsample$X_CENTROID)))
+nb_nuit <- nrow(dsample)
+prop_nuit_noloc <- round(nb_nuit_noloc / nb_nuit * 100,2)
+
+
+nb_nuit_noloc_gr <- length(which(is.na(dsample_gr$X_CENTROID)))
+nb_nuit_gr <- nrow(dsample_gr)
+prop_nuit_noloc_gr <- round(nb_nuit_noloc_gr / nb_nuit_gr,3)
+
+nb_nuit_noloc <- length(which(is.na(dsample$X_CENTROID)))
+nb_nuit <- nrow(dsample)
+prop_nuit_noloc <- round(nb_nuit_noloc / nb_nuit,3)
+
+nb_nuit_noloc_gr_year <- length(which(is.na(dsample_gr[dsample_gr$ANNEE == params$year]$X_CENTROID)))
+nb_nuit_gr_year <- nrow(dsample_gr[dsample_gr$ANNEE == params$year])
+prop_nuit_noloc_gr_year <- round(nb_nuit_noloc_gr_year  / nb_nuit_gr_year ,3)
+
+nb_nuit_noloc_year <- length(which(is.na(dsample[dsample$ANNEE == params$year]$X_CENTROID)))
+nb_nuit_year <- nrow(dsample[dsample$ANNEE == params$year])
+prop_nuit_noloc_year <- round(nb_nuit_noloc_year  / nb_nuit_year ,3)
+
+
+
+d_nuit_noloc <- data.frame(
+    donnees = c(params$origine,paste0(params$origine," - ",params$year),"toutes",paste0("toutes - ",params$year)),
+    nb_nuit_sans_localisation = c(nb_nuit_noloc_gr,nb_nuit_noloc_gr_year,nb_nuit_noloc,nb_nuit_noloc_year),
+    nb_nuit = c(nb_nuit_gr,nb_nuit_gr_year,nb_nuit,nb_nuit_year),
+    proportion = c(prop_nuit_noloc_gr,prop_nuit_noloc_gr_year,prop_nuit_noloc,prop_nuit_noloc_year))
+                                                             
+                                                             
+
 
 ```
 
 En France, depuis `r first_year` (première données de capture dans la
 base de données du MNHN), des opérations de captures ont été réalisé
 dans `r nb_site` communes. Les données de `r params$origine` débute en
-`r first_year_gr` et on été réalisé dans `r nb_site_gr`.
+`r first_year_gr` et on été réalisé dans `r nb_site_gr` (`r f.ref("fig_trend")`).
 En `r params$year`, en France `r nb_site_year` et dans les données 
 `r params$origine` `r nb_site_year_gr` communes ont accueilli des
-opérations de capture de chauve-souris.
+opérations de capture de chauve-souris (`r f.ref("fig_trend")`).
 
 
-```{r,eval=FALSE, fig.cap="La variation temporelle du nombre de site de capture en France"}
-trend_fr_sample_chirod(sample,group = params$origine)
+```{r,eval=TRUE, fig.cap=figure_captions("fig_trend", "La variation temporelle du nombre de site de capture en France")}
+
+trend_sample_chiro(dsample,group = params$origine,last_year=params$year)
 
 ```
-### Les sites en France
 
-```{r, fig.cap="La localisation des captures chiroptères en France"}
-map_fr_chiro(dsample,last_year=params$year,group = params$origine)
+`r if(params$set_output == "pdf"){"
+\\clearpage
+\\newpage"}`
+
+
+### Les sites de capture
+
+Sur l'ensemble du jeux de données `r params$origine` il 
+y a `r prop_nuit_noloc_gr`% des nuits sans localisation (`r t.ref("table_noloc")`).
+
+Cette proportion est plus `r ifelse(prop_nuit_noloc_gr >
+prop_nuit_noloc,"forte","faible")` que la proportion 
+nationale `r prop_nuit_noloc`% (`r t.ref("table_noloc")`).
+
+
+```{r, eval=TRUE,fig.cap=table_captions("table_noloc", "Nombre de nuit sans localisation")}
+kable(d_nuit_noloc)
+
 ```
 
-### Les communes avec site de capute
 
-```{r fig.cap="Les communes et les captures chiroptères de `r params$origine`"}
-map_local_commune_chiro(dsample,last_year=params$year,group = params$origine,dsn_commune="C:\\git\\GIS\\communes-20190101\\communes-20190101.shp")
+```{r,eval=TRUE, fig.cap=figure_captions("fig_loc","Localisation des captures de chiroptères")}
+ggfr <- map_fr_chiro(dsample,last_year=params$year,group = params$origine)
+ggloc <- map_local_commune_chiro(dsample,last_year=params$year,group = params$origine,dsn_commune="C:\\git\\data_GIS\\communes-20190101\\communes-20190101.shp")
+
+gg <- ggarrange(ggfr,ggloc, ncol = 2, common.legend = T, legend = "bottom")
+print(gg)
 ```
 
+`r if(params$set_output == "pdf"){"
+\\clearpage
+\\newpage"}`
+
+
+## Les dates de captures
+
+
+
+```{r,eval=TRUE, fig.cap=figure_captions("fig_date", "Les dates des sessions de captures")}
+
+date_sample_chiro(dsample,group = params$origine,last_year=params$year)
+
+```
+
+
+`r if(params$set_output == "pdf"){"
+\\clearpage
+\\newpage"}`
+
+# Bilan des caputres
+
+## Nombres d'espèces capturées 
+
+
+
+```{r, eval=TRUE}
+nbsp_gr <- length(unique(subset(d,ORIGINE == params$origine)$TAXON))
+nbsp <- length(unique(subset(d,ORIGINE != params$origine)$TAXON))
+
+nbsp_all <- length(unique(d$TAXON))
+
+
+dd <- unique(subset(d,select=c("INSEE","TAXON")))
+agg_sp <- aggregate(TAXON~INSEE,data=dd,length)
+colnames( agg_sp)[ncol( agg_sp)] <- "nbSp"
+medianSp_gen <- median(agg_sp$nbSp)
+
+
+dd <- unique(subset(d,ORIGINE == params$origine,select=c("INSEE","TAXON")))
+agg_sp <- aggregate(TAXON~INSEE,data=dd,length)
+colnames( agg_sp)[ncol( agg_sp)] <- "nbSp"
+medianSp_gr <- median(agg_sp$nbSp)
+
+
+dd <- unique(subset(d,ORIGINE != params$origine,select=c("INSEE","TAXON")))
+agg_sp <- aggregate(TAXON~INSEE,data=dd,length)
+colnames( agg_sp)[ncol( agg_sp)] <- "nbSp"
+medianSp <- median(agg_sp$nbSp)
+  
+```
+
+En France, `r nbsp_all` espèces ont été capturé, `r nbsp_gr` espèces
+dans les données `r params$origine` et `r nbsp` en dehors 
+(`r f.ref("fig_nbsp")`). 
+
+A l'échelle des communes (`r f.ref("fig_nbsp_comm")`), il y a sensiblement
+`r ifelse(medianSp_gr > medianSp,"plus","moins")` d'espèce capturées
+dans les communes du jeux données `r params$origine` (mediane: `r medianSp_gr`)
+que dans les autres communes  (mediane: `r medianSp`). Du manière plus
+général, en France au moins 50 % des communes caputre au moins 
+`r medianSp_gen` espèces (mediane).
+
+
+```{r,eval=TRUE, fig.cap=figure_captions("fig_nbsp", "Nombre d'espèce capturées")}
+
+nb_sp(d,group = params$origine,last_year=params$year)
+
+```
+
+
+
+```{r,eval=TRUE, fig.cap=figure_captions("fig_nbsp_comm", "Nombre d'espèce capturées par commune")}
+
+nb_sp_commune(d,last_year=params$year,group = params$origine,dsn_commune="C:\\git\\data_GIS\\communes-20190101\\communes-20190101.shp")
+
+```
+
+`r if(params$set_output == "pdf"){"
+\\clearpage
+\\newpage"}`
+
+
+# Indicateurs de dynamique des populations
+
+## Structuration sexuel des populations
+
+
+## La productivité des populations
+
+
+`r if(params$set_output == "pdf"){"
+\\clearpage
+\\newpage"}`
+
+# Bilan des mesures 
+
+## Les métriques
