@@ -248,7 +248,7 @@ date_sample_chiro <- function(dsample,group,last_year=NULL,column_group="ORIGINE
     library(data.table)
 
 #browser()
- group="GCPC";last_year=2016;column_group="ORIGINE";column_idsite = "INSEE";column_year="ANNEE";column_date="DATE_POSIX"
+## group="GCPC";last_year=2016;column_group="ORIGINE";column_idsite = "INSEE";column_year="ANNEE";column_date="DATE_POSIX"
 
     dsample <- data.table(dsample)
     if(!is.null(column_year)) dsample$year <- dsample[,column_year,with=FALSE]
@@ -471,7 +471,7 @@ fig_sex_ratio <- function(d,last_year=NULL,group, column_sex="SEXE",
     library(dplyr)
     library(ggrepel)
 
-column_sex = "SEXE";column_age = "AGE";column_longitude="X_CENTROID"; column_latitude= "Y_CENTROID";  olunm_sp="TAXON";group = "GCPC"; column_year="ANNEE";last_year = 2016;column_year="ANNEE";column_group="ORIGINE";column_idsite = "INSEE";dsn_commune="C:\\git\\GIS\\communes-20190101\\communes-20190101.shp"
+### column_sex = "SEXE";column_age = "AGE";column_longitude="X_CENTROID"; column_latitude= "Y_CENTROID";  olunm_sp="TAXON";group = "GCPC"; column_year="ANNEE";last_year = 2016;column_year="ANNEE";column_group="ORIGINE";column_idsite = "INSEE";dsn_commune="C:\\git\\GIS\\communes-20190101\\communes-20190101.shp"
 ##browser()
     dd <- data.table(d)
     if(!is.null(column_longitude)) dd$longitude <- dd[,column_longitude,with=FALSE]
