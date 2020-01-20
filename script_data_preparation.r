@@ -268,7 +268,12 @@ data_cleaning <- function(d=NULL,dfield="library/capture_column.csv",save=TRUE,r
 ##' @param com_cor correcting table of the path of the table
 ##' @return data.table of updating data
 ##' @author Romain Lorrilliere
-commune_corrections <- function(data=NULL,com_cor="library/correctifs_communes.csv",output=FALSE,save=saveStep,fileoutput=NULL) {
+corrections <- function(data=NULL,com_cor="library/correctifs.csv",output=FALSE,save=saveStep,fileoutput=NULL,
+                        field_2_upper=c("COMMUNE","SEXE","DEPARTEMENT","AGE"),
+                        field_2_correctif=c("COMMUNE","SEXE","DEPARTEMENT","AGE","TAXON"),
+                        sex_values=c("FEMELLE","MALE",""),
+                        age_values=c("ADULTE","IMMATURE","JUVENILE"),
+                        dsp=NULL) {
     ## Pour deboguage ------
     ##data=NULL;com_cor=NULL
     ## ----------------------
@@ -276,12 +281,13 @@ commune_corrections <- function(data=NULL,com_cor="library/correctifs_communes.c
 
 
     data <- my_import_fread(data,"ex: fichier_capt_mai2018_analysesbis_clean.csv")
-    com_cor <- my_import_fread(com_cor," of commune file ex: library/correctifs_communes.csv")
+    com_cor <- my_import_fread(com_cor," of commune file ex: library/correctifs.csv")
 
     data <- data.table(data)
-    data$COMMUNUE <- toupper(data$COMMUNE)
 
-    cat("\nDeplacement des articles en début de nom\n\n",sep="")
+    for (f in field_2_upper) data[[f]] <- toupper(data[[f]])
+
+    cat("\nPour les COMMUNES deplacement des articles en début de nom\n\n",sep="")
     vecArticle <- c("LA","LE","LES","L'")
     for( a in vecArticle) {
         from <- paste("[-,\\s]*\\(",a,"\\)[-,\\s]*\\(?([0-9]{1,2}|2[A,B])?\\)?[-,\\s]*$",sep="")
@@ -292,44 +298,142 @@ commune_corrections <- function(data=NULL,com_cor="library/correctifs_communes.c
 
     }
 
+    data$SEXE_raw <- data$SEXE
+    data$AGE_raw <- data$AGE
+    data$TAXON_raw <- data$TAXON
 
-    cat("\nCorrectifs des noms de communes (",nrow(com_cor)," correctifs)\n\n",sep="")
+    data$SEXE <- iconv(data$SEXE, from = 'UTF-8', to = 'ASCII//TRANSLIT')
+    data$AGE <- iconv(data$AGE, from = 'UTF-8', to = 'ASCII//TRANSLIT')
+
+
+
+
+
+
+
+
+
+"Barbastelle d_Europe, Barbastelle,Barbastella  Barbastella barbastellus Schreber 1774,Barbar,BARBAR,Barbastella barbastellus,Barbastella barbastellus Schreber 1774,Barbastella barbastellus Schreber 1774 Barbastella,Barbastella Barbastella barbastellus Schreber 1774,Barbastelle d_Europe"; to <- "Barbastella barbastellus"
+"Eptesicus serotinus,Sérotine commune,Eptesicus serotinus Schreber 1774,EPTSER,Eptser,Serotine commune"; to <- "Eptesicus serotinus"
+"Eptesicus nilssoni Keyserling  Blasius 1839,Eptesicus nilssonii,Eptesicus nilssonii Keyserling  Blasius 1839,EPTNIL"; to <- "Eptesicus nilssonii"
+"Grand murin,Grand Murin,MYOMYO,Myomyo,grand murin,Myotis myotis,Myotis myotis Borkhausen 1797"; to <- "Myotis myotis"
+"Grand rhinolophe,Rhinolophus ferrumequinum,grand rhinolophe,RHIFER,Rhifer,Rhino ferrumequinum,Rhinolophus ferrumequinum Schreber 1774,Rhinolophus ferrumequinum ferrumequinum Schreber 1774"; to <- "Rhinolophus ferrumequinum"
+"HUPSAV,HYPSAV,Hypsugo savii,Vespère de Savi,Hypsugo savii Bonaparte 1837"; to <- "Hypsugo savii"
+"Miniopterus schreibersi,Minioptère de Schreibers,MinioptA?re de Schreibers,Miniopterus schreibersi Kuhl 1817,Miniopterus schreibersii Kuhl 1817,MINSCH,Miniopterus schreibersii"; to <- "Miniopterus schreibersii"
+"Myotis mystacinus,Murin à moustaches,murin à moustaches,Myotis mystacinus,Murin à  moustaches, Vespertilion à  moustaches,Murin à moustaches, Vespertilion à moustaches,murin à  moustaches,Murin à  moustaches,Murin à moustaches,Murin a moustaches,MYOMYS,Myomys,Myotis mystacinus Kuhl 1817"; to <- "Myotis mystacinus"
+"Murin à oreilles échancrées, Vespertilion à oreilles échancrées,Murin à oreilles échancrées,Myotis emarginatus,Murin à  oreilles échancrées,Myoema,MYOEMA,Myotis emarginatus E Geoffroy 1806,Myotis emarginatus E Geoffroy 1806 Vespertilionidae Gray 1821 Myotis Kaup 1829"; to <- "Myotis emarginatus"
+"Murin d_Alcathoe,Myoalc,MYOALC,Myotis alcatho?,Myotis alcathoe Helversen  Heller 2001"; to <- "Myotis alcathoe"
+"Myotis bechsteinii,Murin de Bechstein,Myobec,MYOBEC,Myotis bechsteini,Myotis bechsteini Kuhl 1817,Myotis bechsteinii Kuhl 1817"; to <- "Myotis bechsteinii"
+"Myotis daubentonii,murin de Daubenton,Murin de Daubenton,Myodau,MYODAU,MYODAB,Myotis daubentoni,Myotis daubentoni,Myotis daubentoni Kuhl 1817,Myotis daubentonii Kuhl 1817"; to <- "Myotis daubentonii"
+"Murin de Natterer, Vespertilion de Natterer,Murin de Natterer,Myotis nattereri,MYONAT,Myonat,Myotis nattereri Kuhl 1817,Myotis nattererii,Pipnat"; to <- "Myotis nattereri"
+"Myotis mystacinus / alcathoe,Myotis mystacinus_Myotis alcathoe,Myotis alcathoe-mystacinus,Complexe Myotis alcathoe-mystacinus,Murin mystalcathoe,Murin mystalcathoé,MYOALCMYS,Myotis alcathoe Helversen  Heller 2001 Myotis mystacinus Kuhl 1817,Myotis myst/alcathoe,Myotis mystacinus Kuhl 1817 Myotis alcathoe Helversen  Heller 2001"; to <- "Myotis mystacinus_Myotis alcathoe"
+"Myotis mystacinus_Myotis bechsteinii_Myotis daubentonii,Myotis emarginatus_Myotis mystacinus,Myotis daubentonii / nattereri,Murin de Natterer, Vespertilion de Natterer, Murin d_Alcathoe,Murin de Natterer, Vespertilion de Natterer, Murin d_Alcathoe,Murin sp,MYOSPE,Myotis specie,Myotis Kaup 1829,Msp,MYOMO,MYONT,Myotis bulgaricus,Myotis bulgaricus,Myotis nattereri Kuhl 1817 Myotis alcathoe Helversen  Heller 2001"; to <- "Myotis sp"
+"MYOBRA,Murin de Brandt,Myotis brandtii Eversmann, 1845,Myotis brandtii,Myotis brandti Eversmann 1845,Myotis brandtii Eversmann 1845"; to <- "Myotis brandtii"
+"Vespertilionidae Gray 1821 Myotis Kaup 1829 Myotis emarginatus E Geoffroy 1806,?,Plecotus auritus Linnaeus 1758 Barbastella barbastellus Schreber 1774,Eptesicus serotinus Schreber 1774 Nyctalus leisleri Kuhl 1817,Chiroptera sp,Chauve-souris sp,CHIIND,Chiroptera,Nyctalus leisleri Kuhl 1817 Eptesicus serotinus Schreber 1774,\\?"; to <- "Chiroptera"
+"Myotis mystacinusMyotis brandtii Myotis alcathoe,Myotis mystacinus_Myotis alcathoe_Myotis brandtii,Myotis alcathoe/brandtii/mystacinus,Complexe Myotis alcathoe/brandtii/mystacinus,MYOALCBRAMYS,Myotis mystacinus/brandtii/alcathoe"; to <- "Myotis mystacinus_Myotis alcathoe_Myotis brandtii"
+"Myotis blythii,MYOBLY,Petit Murin,Myotis blythii,PETMUR,Myotis blythii Tomes 1857,Myotis blythii oxygnathus Monticelli 1885,Myotis oxygnathus,Myotis oxygnathus Monticelli 1885"; to <- "Myotis blythii"
+"Myotis mystacinus_Myotis brandtii,Myotis mystacinus / brandtii,MYOBRAMYS,MYOMYSBRA,MYOMYS-BRA,Myotis mystacinus Kuhl 1817 Myotis brandti Eversmann 1845,Myotis mystacinus Kuhl 1817 Myotis brandtii Eversmann 1845,Myotis mystacinus/brandtii,Myotis mystacinusMyotis brandtii,Myotis myst/bra"; to <- "Myotis mystacinus_Myotis brandtii"
+"MYOCAP,Myotis capaccini,Myotis capaccinii Bonaparte 1837"; to <- "Myotis capaccinii"
+"MYODAS"; to <- "Myotis dasycneme"
+"Myotis myotis Borkhausen 1797 Myotis blythii Tomes 1857,Myotis myotis_Myotis blythii,Myotis blythii Tomes 1857 Myotis myotis Borkhausen 1797,MURMUR,Myotis myotis / Myotis oxygnathus,Myotis myotisMyotis blythii,Myotis myotis/blythii"; to <- "Myotis myotis_Myotis blythii"
+"Myotis escalerai Cabrera 1904"; to <- "Myotis escalerai"
+"Myotis myotis Borkhausen 1797 Myotis bechsteinii Kuhl 1817"; to <- "Myotis myotis_Myotis bechsteinii"
+"Myotis nattereri_Myotis escalerai,Murin de Natterer, Vespertilion de Natterer, Murin d_Escalera,Myotis nattereri Kuhl 1817 Myotis escalerai Cabrera 1904,Myotis escalerai Cabrera 1904 Myotis nattereri Kuhl 1817,Murin d_Escalera, Murin de Natterer, Vespertilion de Natterer"; to <- "Myotis nattereri_Myotis escalerai"
+"Myotis brandtii Eversmann 1845 Myotis daubentonii Kuhl 1817,Myotis daubentonii Kuhl 1817 Myotis brandtii Eversmann 1845"; to <- "Myotis brandtii_ Myotis daubentonii"
+"Myotis emarginatus E Geoffroy 1806 Myotis mystacinus Kuhl 1817"; to <- "Myotis emarginatus_Myotis mystacinus"
+"Myotis mystacinus Kuhl 1817 Myotis bechsteinii Kuhl 1817 Myotis daubentonii Kuhl 1817"; to <- "Myotis mystacinus_Myotis bechsteinii_Myotis daubentonii"
+"Myotis nattereri_Spa,Myotis nattereri/Spa,Myotis spA,Myotis nattereriSpa,Myotis SpA"; to <- "Myotis nattereri_Spa"
+"NLAS,NYCLAS,Nyctalus lasiopterus Schreber 1780"; to <- "Nyctalus lasiopterus"
+"Nyctalus leisleri Kuhl 1817,Nyctalus leisleri,Nyctalus leisleri leisleri Kuhl 1817,Nyctalus leislerii,NYCLEI,Nyclei,Noctule de Leisler,Nyctalus leisleri leisleri,Nyctalus leisleri leisleri"; to <- "Nyctalus leisleri"
+"Nyctalus noctula Schreber 1774,NYCNOC,Nyctalus noctula,Noctule commune"; to <- "Nyctalus noctula"
+"Oreillard gris, Oreillard méridional,Oreillard gris,Plecotus austriacus,plecotus austriacus,P austriacus,Plecotus austriacus JB Fischer 1829,PLEAUS,Pleaus"; to <- "Plecotus austriacus"
+"Oreillard roux, Oreillard septentrional,Plecotes auritus hispanicus Bauer 1957,P auritus,Plecotus auritus Linnaeus 1758 Plecotus auritus auritus Linnaeus 1758,Plecotus auritus,plecotus auritus,Oreillard roux,Plecotus auritus Linnaeus 1758,Plecotus auritus auritus Linnaeus 1758,PLEAUR,Pleaur"; to <- "Plecotus auritus"
+"Plecotus austriacus_Plecotus macrobullaris,Plecotus austriacus_Plecotus auritus,Plecotus macrobullaris Kuzjakin 1965 Plecotus auritus auritus Linnaeus 1758,Oreillard montagnard, Oreillard roux, Oreillard septentrional,Oreillard sp,PLESPE,PLESP,PLE AUT,PLEIND,Plecotus species,Plecotus specie,Plecotus sp,PLE SP,Osp,Plecotus E Geoffroy 1818"; to <- "Plecotus"
+"P macrobullaris,Plecotus macrobullaris Kuzjakin 1965,PLEMAC,Oreillard montagnard"; to <- "Plecotus macrobullaris"
+"Petit rhinolophe,Rhinolophus hipposideros,RHIHIP,Rhihip,Rhino hipposideros,Rhinolophus hipposideros Bechstein 1800"; to <- "Rhinolophus hipposideros"
+"RHIEUR,Rhino euryale,Rhinolophus euryale Blasius 1853"; to <- "Rhinolophus euryale"
+"PIP KUH,Pipistrelle kuhlii,pipistrellus kuhlii,Pipistrellus kuhlii,PIPKHU,Pipkuh,PIPKUH,Pipistrellus kuhlii Kuhl 1817,Pipistrellus kuhli Kuhl 1817,Pipistrelle de Kuhl,Pipistrel kuhli"; to <- "Pipistrellus kuhlii"
+"Pipnat,PIP NAT,Pipistrelle de Nathusius,Pipistrellus nathusii,Pipistrellus nathusii Keyserling  Blasius 1839,PIPNAT,PIPNAT"; to <- "Pipistrellus nathusii"
+"Pipistrel pipistrellus,Pipistrellus pipistrellus,Pipistrellus pipistrellus pipistrellus,Pipistrellus pipistrellus pipistrellus,Pipistrelle commune,Pipistrellus pipistrellus pipistrellus,Pipistrellus pipistrellus Schreber 1774,PIPPIP,PiPPIP,Pippip"; to <- "Pipistrellus pipistrellus"
+"Pipistrel pygmaeus,Pipistrelle pygmaeus,Pipistrellus pygmaeus,PIPPYG,Pipistrellus cf pygameus,Pipistrellus pygmaeus Leach 1825"; to <- "Pipistrellus pygmaeus"
+"Pipistrellus specie,Pipistrellus,Pipistrelle sp,Pipistrellus nathusius ?,Pipistrel sp,PIPIND,Pipistrellus species,Pipistrellus sp"; to <- "Pipistrellus"
+"Pipistrellus kuhlii_Pipistrellus nathusii,Pipistrelle de Kuhl/Nathusius,Pipkuh-Pipnat"; to <- "Pipistrellus kuhlii_Pipistrellus nathusii"
+"Pipistrellus pygmaeus Leach 1825 Pipistrellus nathusii Keyserling  Blasius 1839,Pipistrellus nathusii_Pipistrellus pygmaeus,Pipistrellus nathusii Keyserling  Blasius 1839 Pipistrellus pygmaeus Leach 1825"; to <- "Pipistrellus nathusii_Pipistrellus pygmaeus"
+"Pipistrelle commune, Pipistrelle pygmée,Pipistrellus pipistrellus Schreber 1774 Pipistrellus pygmaeus Leach 1825,PIPPIPPYG,Pipistrellus pipistrellus / pygmaeus,Pipistrellus pipistrellus Schreber, 1774, Pipistrellus pygmaeus Leach, 1825"; to <- "Pipistrellus pygmaeus_Pipistrellus pipistrellus"
+"Pipistrellus pipistrellus_Pipistrellus kuhlii,Pipistrellus pipistrellus Schreber 1774 Pipistrellus kuhli Kuhl 1817"; to <- "Pipistrellus pipistrellus_Pipistrellus kuhlii"
+"Plecotus austriacus JB Fischer 1829 Plecotus auritus Linnaeus 1758,Plecotus auritus Linnaeus 1758 Plecotus austriacus JB Fischer 1829"; to <- "Plecotus austriacus_Plecotus auritus"
+"Plecotus austriacus JB Fischer 1829 Plecotus macrobullaris Kuzjakin 1965,Plecotus macrobullaris Kuzjakin 1965 Plecotus austriacus JB Fischer 1829"; to <- "Plecotus austriacus_Plecotus macrobullaris"
+"VESMUR,Sérotine bicolore,Vespertilio murinus Linnaeus 1758"; to <- "Vespertilio murinus"
+"Tadarida teniotis Rafinesque 1814,Molosse de Cestoni,TADTEN"; to <- "Tadarida teniotis"
+"Rhinolophus euryale_Rhinolophus ferrumequinum,RHIEURFER"; to <- "Rhinolophus euryale_Rhinolophus ferrumequinum"
+"RAS,Chiropteres : Aucune observation,Aucune espèce,Aucune"
+"chauve-souris"; to <- "BREDOUILLE"
+"NYCIND"; to <- "Nyctalus sp"
+"Rhinolophus"; to <- "Rhinolophus"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    cat("\nCorrectifs: ",nrow(com_cor)," correctifs\n\n",sep="")
+
+    lesfieldcorrectif <- paste("les",length(field_2_correctif),"colonnes")
 
     for(i in 1:nrow(com_cor)) {
         ##  i=1
 
         from <- gsub("\\\\","\\",com_cor[i,search],fixed=TRUE)
         ##  print(from)
+        the_field <- com_cor[i,field]
+        if (the_field == "") the_field <- field_2_correctif
         to <- com_cor[i,replaceBy]
         sub <- com_cor[i,restrict]!=""
         strict <- com_cor[i,strictly]
-        cat(i,": ",gsub("\\","\\\\",as.vector(from),fixed=TRUE)," -> ", to," | subset:",sub,"  nom complet: ",strict,"\n")
-        if(sub) { # on remplace un sous ensemble des noms
-            col <- com_cor[i,fieldRestrict]
-            val <- com_cor[i,restrict]
-            cat("     ",col," %in% ",val," \n")
-            if(strict) { # on remplace tout le nom
-                nbcor <- nrow(data[data[[col]] %in% val & data$COMMUNE == from])
-                if(nbcor>0)
-                    data <- data[data[[col]] %in% val & data$COMMUNE == from,COMMUNE:= to]
-            } else { # ELSE strict   remplace qu'un pattern
-                nbcor <- length(grep(from,data[data[[col]] %in% val,COMMUNE]))
-                if(nbcor>0)
-                    data$COMMUNE <- ifelse(data[[col]] %in% val, gsub(from,to,data$COMMUNE),data$COMMUNE)
-            } # END ELSE strict
-        } else { # ELSE sub on remplace tous les noms
-            if(strict) { # on remplace tout le nom
-                nbcor <- nrow(data[data[["COMMUNE"]]==from])
-                if(nbcor>0)
-                    data <- data[data[["COMMUNE"]]==from,"COMMUNE":= to]
-            } else { # ELSE strict   remplace qu'un pattern
-                nbcor <- length(grep(from,data[,COMMUNE],perl=TRUE))
-                if(nbcor>0)
-                    data$COMMUNE <- gsub(from,to,data[,COMMUNE],perl=TRUE)
-            } # END ELSE strict
-        } #END ELSE sub
-        cat("    -> ",nbcor," remplacement(s)\n")
+        multi <-  com_cor[i,multiple]
+        for(field in the_field) {
+            cat(i,": colonne:",field," | action:",gsub("\\","\\\\",as.vector(from),fixed=TRUE)," -> ", to," | subset:",sub,"  | nom complet: ",strict,"\n")
+            if(sub) { # on remplace un sous ensemble des noms
+                col <- com_cor[i,fieldRestrict]
+                val <- com_cor[i,restrict]
+                cat("     ",col," %in% ",val," \n")
+                if(strict) { # on remplace tout le nom
+                    if (multi) from <- strsplit(from,",")
+                    nbcor <- nrow(data[data[[col]] %in% val & data[[field]] %in% from])
+                    if(nbcor>0)
+                        set(data,i=which(data[[col]] %in% val & data[[field]] %in% from),j=field,value=to)
+                 } else { # ELSE strict   remplace qu'un pattern
+                    nbcor <- length(grep(from,data[data[[col]] %in% val,COMMUNE]))
+                    if(nbcor>0)
+                        data[[field]] <- ifelse(data[[col]] %in% val, gsub(from,to,data[[field]]),data[[field]])
+                } # END ELSE strict
+            } else { # ELSE sub on remplace tous les noms
+                if(strict) { # on remplace tout le nom
+                    if (multi) from <- strsplit(from,",")
+                    nbcor <- nrow(data[data[[field]] %in% from])
+                    if(nbcor>0)
+                        set(data,i=which(data[[field]] %in% from),j=field,value=to)
+                } else { # ELSE strict   remplace qu'un pattern
+                    nbcor <- length(grep(from,data[[field]],perl=TRUE))
+                    if(nbcor>0)
+                        data[[field]] <- gsub(from,to,data[[field]],perl=TRUE)
+                } # END ELSE strict
+            } #END ELSE sub
+            cat("    -> ",nbcor," remplacement(s)\n")
+        } #END for(field in the_field) {
     } #END for(i in 1:nrow(com_cor))
+
+
     if(save) {
         if(is.null(fileoutput))fileoutput<- paste0(format(as.Date(Sys.time()),"%Y%m%d"),"_clean_commune.csv")
         file_data <- paste0(repOut,fileoutput)
@@ -1507,3 +1611,110 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
     cat("    Duration:",duration,"minutes\n")
 
 }
+
+
+
+
+
+aggregate_raw_files <- function(rep_raw=paste0(getwd(),"/data_raw"),fileColumns="library/capture_column.csv") {
+
+    library(data.table) # data.table format #fread()
+
+    tab_columns <- fread(fileColumns)
+    columns <- tab_columns$name
+    columns_original <- columns
+
+    #rep_raw <- paste0(getwd(),"/data_raw")
+    if(is.null(rep_raw))
+        rep_raw <- choose.dir(caption="Select directory of the raw data files")
+
+    cat("Get raw data file from:",rep_raw)
+    listfile <- dir(rep_raw,full.names=TRUE)
+    nb_file <-  length(listfile)
+    cat("  ...  ",nb_file,"file(s)     DONE !\n")
+
+    d <- NULL
+
+
+    for(i in 1:length(listfile)) {
+                                        #   f <- listfile[2]
+        f <- listfile[i]
+        cat("\n\n [",i,"/",nb_file,"] FILE: ",f,"\n",sep="")
+        df <- fread(f)
+        if (nrow(df)>0) {
+            cat("\n",ncol(df),"colonnes et ",nrow(df),"ligne(s)\n")
+
+
+            df_col <- colnames(df)
+            d_col <- colnames(d)
+
+            ncol_good <- length(intersect(df_col,columns_original))
+            cat("\n",ncol_good, "colonnes correctes\n")
+
+            col_abs <- setdiff(columns,df_col)
+            ncol_abs <- length(col_abs)
+
+
+            if (ncol_abs > 0) {
+                col_original_abs <- setdiff(columns_original,df_col)
+                ncol_original_abs <- length(col_original_abs)
+                if (ncol_original_abs > 0) {
+                    cat("\n Ajout des",ncol_original_abs, "colonnes absentes\n")
+                    cat(col_abs,"\n")
+                } else {
+                    cat("\n0 colonne manquante\n")
+                }
+                df_abs <- data.table(matrix(NA,nrow=nrow(df),ncol=ncol_abs))
+                colnames(df_abs) <- col_abs
+
+           #     columns <- c(columns,col_abs)
+
+                df <- data.table(df,df_abs)
+
+            } else {
+                cat("\n0 colonne manquante\n")
+            }
+
+
+            col_new <- setdiff(df_col,columns)
+            ncol_new <- length(col_new)
+
+
+#
+            if (ncol_new > 0 & !is.null(nrow(d))) {
+                   cat("\n Ajout des ",ncol_new, "nouvelles colonnes:\n")
+            cat(col_new,"\n")
+
+                d_new <- data.table(matrix(NA,nrow=nrow(d),ncol=ncol_new))
+                colnames(d_new) <- col_new
+
+                columns <- c(columns,col_new)
+
+                d <- data.table(cbind(d,d_new))
+
+            } else {
+                cat("\n0 nouvelle colonne\n")
+            }
+
+#browser()
+            df <- df[,columns,with=FALSE]
+            d <- d[,columns,with=FALSE]
+            d <- rbind(d,df)
+            cat("\n  --> table global:",nrow(d),"lignes\n")
+
+        } else {
+
+            cat("\n0 ligne dans ce fichier....\n")
+        }
+
+
+    }
+
+      cat("\n\n Fin de l'assemblage:",ncol(d),"colonnes et ",nrow(d),"lignes\n")
+    return(d)
+
+
+}
+
+
+
