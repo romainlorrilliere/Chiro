@@ -25,3 +25,6 @@ sig/
 *.rmd~
 *.nc
 isd-history.csv
+*.txt#
+.#truc.txt
+*.rmd#
