@@ -1,6 +1,6 @@
 ---
 author: "Romain Lorrilliere & Julie Marmet (CESCo, MNHN)"
-date: "`r Sys.time()`"
+date: "`r as.Date(Sys.time())`"
 params:
  year: 2018
  origine: "GCPC"
