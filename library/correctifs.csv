@@ -75,4 +75,5 @@
 "AGE";".*((JEUNE)|(JUV)).";"JUVENILE";"";"";FALSE;FALSE;" regle generale pour les juvelines"
 "AGE";"J,1A";"JUVENILE";"";"";FALSE;TRUE;" les cas particulier des juvelines"
 "AGE";".*((AD)|(AF)|(POST)|(2)|(\\+)).*";"ADULTE";"";"";FALSE;FALSE;" regle generale pour les adultes"
-"AGE";"A";"ADULTE";"";"";FALSE;TRUE;" les cas particulier des adultes"
+"AGE";"A";"ADULTE";"";"";FALSE;TRUE;"les cas particulier des adultes"
+"TAXON";"Vespertilionidae Gray 1821 Myotis Kaup 1829 Myotis emarginatus E Geoffroy 1806,?,Plecotus auritus Linnaeus 1758 Barbastella barbastellus Schreber 1774,Eptesicus serotinus Schreber 1774 Nyctalus leisleri Kuhl 1817,Chiroptera sp,Chauve-souris sp,CHIIND,Chiroptera,Nyctalus leisleri Kuhl 1817 Eptesicus serotinus Schreber 1774,\\?";"Chiroptera";"";"";FALSE;TRUE;""
