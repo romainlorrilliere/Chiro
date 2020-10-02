@@ -5,18 +5,25 @@ require(data.table)
 require(sf)
 require(tools)
 
-mainCleaning <- function(d=NULL,dcolumn="library/capture_column.csv",dcommune="library/correctifs_communes.csv",shape_commune="library/CommunesCentr_L93.shp",weatherRdata_file="data/data_meteo_temp_prec_ens_mean_0.25deg_reg_v20.Rdata", do_data_cleaning=TRUE,do_commune_corrections=TRUE,do_localite_adding=TRUE,do_time_cleaning=TRUE,do_period_adding=TRUE,do_sunset_adding=FALSE,do_weather_adding=FALSE,saveStep=TRUE,repStep="data/",save=TRUE,fileoutput=NULL,repOut="data/",output=FALSE) {
+mainCleaning <- function(d=NULL,update=TRUE,dcolumn="library/capture_column.csv",dcommune="library/correctifs.csv",shape_commune="library/CommunesCentr_L93.shp",weatherRdata_file="data/data_meteo_temp_prec_ens_mean_0.25deg_reg_v20.Rdata",
+                         col_required= c("ORIGINE","ID","OBSERVATEUR","OBSERVATEUR2","RESPONSABLE","COMMUNE","INSEE","DEPARTEMENT","DEPARTEMENT2","REGION","LIEU_DIT","DATE","ANNEE","MOIS","JOUR","JOUR2","JOUR_ANNEE","HEURE","TAXON","SEXE","AGE","AB","POIDS","POUCE","D3","D5","METHODE_DOIGTS","D5_avecpoignet_max","D3_avecpoignet_max","D3_avecpoignet","D3_sanspoignet","D5_sanspoignet","D3_avecpoignet_min","D5_avecpoignet","D5_avecpoignet_min","QUEUE","TIBIA","PIED","CM3","LONG_OREILLE","LARG_OREILLE","LONG_TRAGUS","LARG_TRAGUS","GRIFFE","STATUT_ACTIVITE","STATUT_PARITE","STATUT_REPRO","MAMELLES","GESTATION","TEST","EPID","TV","FORME_PENIS","COULEUR_SEXE","EPIPH","CHIN_SPOT","TAILLE_GLANDES","COUL_GLANDES","USURE_DENTS","CELLULES_ALAIRES","COMMENTAIRES","COMMENTAIRES2","COMMENTAIRES_RELEVE","PARASITES","PUCE","TIQUE","PUCES","TIQUES","ACARIENS","NYCT","CIMEX","HEURE_POSE_FILET","MUE","ESPECE","EPIBLEME"),
+                         do_data_cleaning=TRUE,do_commune_corrections=TRUE,do_localite_adding=TRUE,do_time_cleaning=TRUE,do_period_adding=TRUE,do_sunset_adding=FALSE,do_weather_adding=FALSE,saveStep=TRUE,repStep="output_import/",save=TRUE,fileoutput=NULL,repOut="output_import/",repData="data/",output=FALSE) {
 
-    ## d=NULL;dcolumn="library/capture_column.csv";dcommune="library/correctifs_communes.csv";shape_commune="library/CommunesCentr_L93.shp"; do_data_cleaning=TRUE;do_commune_corrections=TRUE;do_localite_adding=TRUE;do_time_cleaning=TRUE;do_period_adding=TRUE;do_sunset_adding=FALSE;do_weather_adding=FALSE;saveStep=TRUE;repStep="data/";save=TRUE;fileoutput=NULL;repOut="data/";output=FALSE
-
+### d=NULL;dcolumn="library/capture_column.csv";dcommune="library/correctifs_communes.csv";shape_commune="library/CommunesCentr_L93.shp"; do_data_cleaning=TRUE;do_commune_corrections=TRUE;do_localite_adding=TRUE;do_time_cleaning=TRUE;do_period_adding=TRUE;do_sunset_adding=FALSE;do_weather_adding=FALSE;saveStep=TRUE;repStep="data/";save=TRUE;fileoutput=NULL;repOut="data/";output=FALSE
+### col_required= c("ORIGINE","ID","OBSERVATEUR","OBSERVATEUR2","RESPONSABLE","COMMUNE","INSEE","DEPARTEMENT","DEPARTEMENT2","REGION","LIEU_DIT","DATE","ANNEE","MOIS","JOUR","JOUR2","JOUR_ANNEE","HEURE","TAXON","SEXE","AGE","AB","POIDS","POUCE","D3","D5","METHODE_DOIGTS","D5_avecpoignet_max","D3_avecpoignet_max","D3_avecpoignet","D3_sanspoignet","D5_sanspoignet","D3_avecpoignet_min","D5_avecpoignet","D5_avecpoignet_min","QUEUE","TIBIA","PIED","CM3","LONG_OREILLE","LARG_OREILLE","LONG_TRAGUS","LARG_TRAGUS","GRIFFE","STATUT_ACTIVITE","STATUT_PARITE","STATUT_REPRO","MAMELLES","GESTATION","TEST","EPID","TV","FORME_PENIS","COULEUR_SEXE","EPIPH","CHIN_SPOT","TAILLE_GLANDES","COUL_GLANDES","USURE_DENTS","CELLULES_ALAIRES","COMMENTAIRES","COMMENTAIRES2","COMMENTAIRES_RELEVE","PARASITES","PUCE","TIQUE","PUCES","TIQUES","ACARIENS","NYCT","CIMEX","HEURE_POSE_FILET","MUE","ESPECE","EPIBLEME")
     library(data.table)
     library(tools)
 
+    vecrep <- c("data_raw_error","data_raw_new","data","output_import")
+    for(rep in vecrep) if(!dir.exists(rep))dir.create(rep)
+
+
+
     start <-Sys.time()
 
-    cat("\n----------------------------------------\n  Preparation des données capture chiro\n----------------------------------------\n\n")
+    cat("\n----------------------------------------\n\n  Preparation des données capture chiro\n\n----------------------------------------\n\n")
 
-    cat(as.character(start),"\n")
+    cat(as.character(start),"\n\n")
 
     file <- NULL
     if(class(d)[1]=="character") file <- d else file <- format(as.Date(Sys.time()),"%Y%m%d")
@@ -25,64 +32,109 @@ mainCleaning <- function(d=NULL,dcolumn="library/capture_column.csv",dcommune="l
         fileoutput <- paste0("data_capt_",file,".csv")
     prefFile <- file_path_sans_ext(fileoutput)
 
-    d <- my_import_fread(d,"ex: fichier_capt_mai2018_analysesbis.csv")
+
+    cat(" -0- Importation des fichiers brut\n\n")
+
+    list_file <- dir("data_raw_new/",full.names=TRUE)
+    list_file <- list_file[grep(".csv$",list_file)]
+    nbfile <- length(list_file)
 
 
-    cat(" -1- dataCleaning\n")
-    if(do_data_cleaning){
-        d <- data_cleaning(d,dfield=dcolumn ,output="data",save=saveStep,repOut=repStep,id_output=prefFile)
-        cat("    DONE!\n")
-    } else {
-        cat("    Step canceled...\n")
+    cat(nbfile,"fichier(s) CSV à traiter\n\n")
+
+    d <- NULL
+    for(f in list_file) {
+        cat("\n\n")
+        df <- my_import_fread(f)
+        nbrow <- nrow(df)
+        cat("\n\n  ->  ",nbrow," ligne(s) à importer\n\n")
+        if(nbrow == 0) {
+            cat("SKIP Importation !\n\n")
+        } else { # ELSE if(nbrow == 0)
+            col.df <- colnames(df)
+            col.abs <- setdiff(col_required,col.df)
+            nbcol.abs <- length(col.abs)
+            col.add <- setdiff(col.df,col_required)
+            nbcol.add <- length(col.add)
+            if(nbcol.add>0) {
+                cat("  ",nbcol.add,"colonne(s) non conservée(s)\n\n:")
+                cat(paste(col.add,collapse=", "),"\n\n")
+            }
+
+            if(nbcol.abs>0) {
+                cat("  ",nbcol.abs,"colonne(s) non présente(s)\n\n:")
+                cat(paste(col.abs,collapse=", "),"\n\n")
+                cat("\n\n Les colonnes sont ajoutée(s) et sont rempli de NA !\n\n")
+
+                df.add <- data.table(matrix(NA,nrow=nrow(df),ncol=nbcol.abs))
+                colnames(df.add) <- col.abs
+                df <- cbind(df,df.add)
+            }
+
+            df <- df[,..col_required]
+            if(is.null(d)) d <- df  else  d <- rbind(d,df)
+
+        }# END ELSE if(nbrow == 0)
+
     }
 
-    cat(" -2- commune_correction\n")
+    cat(" -1- correction: correction des valeurs à partir du fichier de corrections\n\n")
     if(do_commune_corrections){
 
-        d <- commune_corrections(data=d,com_cor=dcommune,output=TRUE,save=saveStep,fileoutput=paste0(prefFile,"_clean_commune.csv"))
-        cat("    DONE!\n")
+        d <- corrections(data=d,com_cor=dcommune,output=TRUE,save=saveStep,fileoutput=paste0(prefFile,"_clean_commune.csv"),repOut=repStep)
+        cat("    DONE!\n\n")
      } else {
-        cat("    Step canceled...\n")
+        cat("    Step canceled...\n\n")
     }
 
-    cat(" -3- add_localite\n")
+    cat(" -2- dataCleaning: verrification des types de données présents dans les colonnes\n\n")
+    if(do_data_cleaning){
+        d <- data_cleaning(d,dfield=dcolumn ,output="data",save=saveStep,repOut=repStep,id_output=prefFile)
+        cat("    DONE!\n\n")
+    } else {
+        cat("    Step canceled...\n\n")
+    }
+
+
+
+    cat(" -3- add_localite\n\n")
     if(do_localite_adding){
         d <- add_localite(data=d,file_shape_commune=shape_commune,output=TRUE,save=saveStep,repOut=repStep,file_out=paste0(prefFile,"_clean_loc.csv"))
-        cat("    DONE!\n")
+        cat("    DONE!\n\n")
     } else {
-        cat("    Step canceled...\n")
+        cat("    Step canceled...\n\n")
     }
 
-    cat(" -4- date_time_cleaning\n")
+    cat(" -4- date_time_cleaning\n\n")
     if(do_time_cleaning){
         d <- date_cleaning(d,output=TRUE,save=saveStep,fileoutput=paste0(prefFile,"_clean_loc_time.csv"))
-        cat("    DONE!\n")
+        cat("    DONE!\n\n")
     } else {
-        cat("    Step canceled...\n")
+        cat("    Step canceled...\n\n")
     }
 
-    cat(" -5- ajout_periode\n")
+    cat(" -5- ajout_periode\n\n")
     if(do_period_adding){
         d <- ajout_period(d,output=TRUE,save=saveStep,fileoutput=paste0(prefFile,"_clean_loc_time_periode.csv"))
-        cat("    DONE!\n")
+        cat("    DONE!\n\n")
     } else {
-        cat("    Step canceled...\n")
+        cat("    Step canceled...\n\n")
     }
 
-    cat(" -6- add_sunset_sunrise\n")
+    cat(" -6- add_sunset_sunrise\n\n")
     if(do_sunset_adding){
         d <- add_sunset_sunrise(d,output=TRUE,save=saveStep,repout=repStep,fileoutput=paste0(prefFile,"_clean_loc_time_periode_sunset.csv"))
-        cat("    DONE!\n")
+        cat("    DONE!\n\n")
     } else {
-        cat("    Step canceled...\n")
+        cat("    Step canceled...\n\n")
     }
 
-    cat(" -7- add_weather\n")
+    cat(" -7- add_weather\n\n")
     if(do_weather_adding){
         d <- add_weather(d,output=TRUE,save=saveStep,repout=repStep,fileoutput=paste0(repStep,prefFile,"_clean_loc_time_periode_sunset_weather.csv"),fileoutput_weather=paste0(repStep,prefFile,"_sample_weather.csv"))
-        cat("    DONE!\n")
+        cat("    DONE!\n\n")
     } else {
-        cat("    Step canceled...\n")
+        cat("    Step canceled...\n\n")
     }
 
 
@@ -95,17 +147,17 @@ mainCleaning <- function(d=NULL,dcolumn="library/capture_column.csv",dcommune="l
 my_import_fread <- function(d,descri=NULL) {
     library(data.table)
       if (is.null(d)) {
-          cat("select your data file\n")
-          if(!is.null(descri)) cat(descri,"\n")
+          cat("select your data file\n\n")
+          if(!is.null(descri)) cat(descri,"\n\n")
         d <- fread(file.choose())
     } else { # ELSE if (is.null(d))
         if(class(d)[1]=="character") {
             if(file.exists(d)) {
-                cat("Importation:",d,"\n")
+                cat("Importation:",d,"\n\n")
                 d <- fread(d)
-                cat("  DONE !\n")
+                cat("  DONE !\n\n")
             } else {
-                print("File",d," does not exist, select the correct file:\n")
+                print("File",d," does not exist, select the correct file:\n\n")
                 d <- fread(file.choose())
             }
         }
@@ -120,7 +172,6 @@ my_import_fread <- function(d,descri=NULL) {
 
 data_cleaning <- function(d=NULL,dfield="library/capture_column.csv",save=TRUE,repOut="data",id_output=NULL,output="data") {
     library(dplyr)
-#browser()
     ## Pour deboguage ------
     ##  d <- NULL ;    dfield <- NULL;  save=TRUE;repOut="data";id_output=NULL;output="data"
     ## ------------------------
@@ -147,10 +198,10 @@ data_cleaning <- function(d=NULL,dfield="library/capture_column.csv",save=TRUE,r
     d_error <-  data.frame(column_error=NA,type_error=NA,value_error=NA,new_value=NA,d[1,],stringsAsFactors=FALSE)
     d_error <- d_error[-1,]
     if(nrow(ddfield) > 0) {
-        cat(nrow(ddfield)," column with error in the class automatically affected !!!\n")
+        cat(nrow(ddfield)," column with error in the class automatically affected !!!\n\n")
         cat("  ->  ",paste(ddfield$name, collapse=", "),"\n\n")
 
-        cat("  correcting :\n")
+        cat("  correcting :\n\n")
         for(n in ddfield$name) {
             ddfield_n <- subset(ddfield,name==n)
             print(ddfield_n,row.names=FALSE)
@@ -161,7 +212,7 @@ data_cleaning <- function(d=NULL,dfield="library/capture_column.csv",save=TRUE,r
             if(exp_class == "logical") {
                 nb_replac <- length(which(col_n %in% c("OUI","NON")))
                 if(nb_replac>0) {
-                    cat("replacement of",nb_replac,"'OUI' and 'NON' by 'TRUE' and 'FALSE' \n")
+                    cat("replacement of",nb_replac,"'OUI' and 'NON' by 'TRUE' and 'FALSE' \n\n")
                     col_n <- ifelse(col_n == "OUI","TRUE",ifelse(col_n=="NON","FALSE",NA))
                 }
             }
@@ -169,24 +220,24 @@ data_cleaning <- function(d=NULL,dfield="library/capture_column.csv",save=TRUE,r
             if(exp_class == "integer") {
                 nb_replac <- length(which(col_n == "X"))
                 if(nb_replac >0) {
-                    cat("replacement of",nb_replac,"'X' by '0' \n")
+                    cat("replacement of",nb_replac,"'X' by '0' \n\n")
                     col_n <- ifelse(col_n == "X","0",col_n)
                 }
             }
             col_n <- do.call(fun_2_class,list(col_n))
             row_pb <- which(is.na(col_n) & !(is.na(d[,n]) | d[,n]=="NA" | d[,n] ==""))
             if(length(row_pb>0)) {
-                cat(length(row_pb),"value(s) can't be tranformed\n")
+                cat(length(row_pb),"value(s) can't be tranformed\n\n")
                 d$error_data[row_pb] <- paste(d$error_data[row_pb],n,sep="|")
 
                 d_error_n <-  data.frame(column_error=n,type_error=paste(exp_class,"expected"),value_error=d[row_pb,n],new_value=NA,d[row_pb,],stringsAsFactors=FALSE)
                 d_error <- rbind(d_error,d_error_n)
 
             } else {
-                cat("All value(s) have been tranformed\n")
+                cat("All value(s) have been tranformed\n\n")
             }
             d[,n] <- col_n
-            cat("\n")
+            cat("\n\n")
         }
 
 
@@ -195,28 +246,28 @@ data_cleaning <- function(d=NULL,dfield="library/capture_column.csv",save=TRUE,r
     field_list <- subset(dfield,keeped&expected_class=="character"& allowed_val!= "")$name
 
     if(length(field_list) > 0) {
-        cat(length(field_list)," colomn with list of allowed values\n")
-        cat("       ",paste(field_list,collapse=", "),"\n\nChecking:\n")
+        cat(length(field_list)," colomn with list of allowed values\n\n")
+        cat("       ",paste(field_list,collapse=", "),"\n\nChecking:\n\n")
 
         for(f in field_list) {
             ddf <- subset(dfield,name==f,select=c("name","allowed_val","NA_allowed"))
             print(ddf,row.names=FALSE)
             space_forbiden <- length(grep(" ",ddf$allowed_val)) == 0
             if(space_forbiden & length(grep(" ",d[,f])>0)) {
-                cat("Deleting",length(grep(" ",d[,f])),"not allowed space\n")
+                cat("Deleting",length(grep(" ",d[,f])),"not allowed space\n\n")
                 d[,f] <- gsub(" ","",d[,f])
             }
 
             lower_forbiden <- ddf$allowed_val == toupper(ddf$allowed_val)
             if(lower_forbiden) {
-                cat("Lower case not allowed --> Forcing to upper case\n")
+                cat("Lower case not allowed --> Forcing to upper case\n\n")
                 d[,f] <- toupper(d[,f])
             }
 
             vecval <- as.vector(strsplit(ddf$allowed_val,"|",fixed=TRUE)[[1]])
 
             if(!("" %in% vecval) & length(which(d[,f]==""))> 0) {
-                cat("Empty string is not allowed --> ",length(which(d[,f]=="")),"Replacing by NA\n")
+                cat("Empty string is not allowed --> ",length(which(d[,f]=="")),"Replacing by NA\n\n")
                 d[,f] <- ifelse(d[,f]=="",NA,d[,f])
             }
 
@@ -225,13 +276,13 @@ data_cleaning <- function(d=NULL,dfield="library/capture_column.csv",save=TRUE,r
             i_error <- which(!(d[,f] %in% vecval))
 
             if(length(i_error)>0) {
-                cat(length(i_error),"value of the",f,"field do not allowed \n   replaced by NA\n")
+                cat(length(i_error),"value of the",f,"field do not allowed \n\n   replaced by NA\n\n")
                 d$error_data[i_error] <- paste(d$error_data[i_error],f,sep=";")
 
                 d_error_f <-  data.frame(column_error=f,type_error="value not allowed",value_error=d[i_error,f],new_value=NA,d[i_error,],stringsAsFactors=FALSE)
                 d_error <- rbind(d_error,d_error_f)
             }
-            cat("\n")
+            cat("\n\n")
         }
     }
 
@@ -244,10 +295,10 @@ data_cleaning <- function(d=NULL,dfield="library/capture_column.csv",save=TRUE,r
         cat("\n\n")
         cat("  -->", file_data)
         write.csv(d,file_data,row.names=FALSE)
-        cat("   DONE !\n")
+        cat("   DONE !\n\n")
         cat("  -->", file_error)
         write.csv(d_error,file_error,row.names=FALSE)
-        cat("   DONE !\n")
+        cat("   DONE !\n\n")
     }
 
     cat("\n\n")
@@ -267,15 +318,23 @@ data_cleaning <- function(d=NULL,dfield="library/capture_column.csv",save=TRUE,r
 ##' @param com_cor correcting table of the path of the table
 ##' @return data.table of updating data
 ##' @author Romain Lorrilliere
-corrections <- function(data=NULL,com_cor="library/correctifs.csv",output=FALSE,save=saveStep,fileoutput=NULL,
-                        field_2_upper=c("COMMUNE","SEXE","DEPARTEMENT","AGE"),
-                        field_2_correctif=c("COMMUNE","SEXE","DEPARTEMENT","AGE","TAXON"),
+corrections <- function(data=NULL,com_cor="library/correctifs.csv",
+                        output=FALSE,save=saveStep,fileoutput=NULL,
+                        repOut="output_import/",
+                        field_2_upper=c("SEXE","AGE","GESTATION","MAMELLES","TEST","EPID","TV","EPIPH","CHIN_SPOT","USURE_DENTS","STATUT_REPRO","COMMUNE","DEPARTEMENT"),
+                        field_2_correctif=c("SEXE","AGE","TAXON","GESTATION","MAMELLES","TEST","EPID","TV","EPIPH","CHIN_SPOT","USURE_DENTS","STATUT_REPRO","COMMUNE","DEPARTEMENT"),
                         sex_values=c("FEMELLE","MALE",""),
                         age_values=c("ADULTE","IMMATURE","JUVENILE"),
                         dsp=NULL) {
     ## Pour deboguage ------
-    ##data=NULL;com_cor=NULL
-    ## ----------------------
+##    data=NULL;com_cor=NULL
+##    output=FALSE;save=TRUE;fileoutput=NULL
+##    field_2_upper=c("COMMUNE","SEXE","DEPARTEMENT","AGE")
+##    field_2_correctif=c("COMMUNE","SEXE","DEPARTEMENT","AGE","TAXON")
+##    sex_values=c("FEMELLE","MALE","")
+##    age_values=c("ADULTE","IMMATURE","JUVENILE")
+##    dsp=NULL
+##    ## ----------------------
     library(data.table)
 
 
@@ -283,174 +342,33 @@ corrections <- function(data=NULL,com_cor="library/correctifs.csv",output=FALSE,
     com_cor <- my_import_fread(com_cor," of commune file ex: library/correctifs.csv")
 
     data <- data.table(data)
+    for(f in field_2_corretif) {
+        data[[f]] <- iconv(data[[f]], from = 'UTF-8', to = 'ASCII//TRANSLIT')
+        f_raw <- paste(f,"raw",sep="_")
+        vec_f <- data[[f]]
+        data <- data[,(f_raw) := vec_f]
+    }
 
-    for (f in field_2_upper) data[[f]] <- toupper(data[[f]])
+    for (f in field_2_upper) data[[f]] <- toupper(as.character(data[[f]]))
 
-    cat("\nPour les COMMUNES deplacement des articles en début de nom\n\n",sep="")
+    cat("\n\nPour les COMMUNES deplacement des articles en début de nom\n\n",sep="")
     vecArticle <- c("LA","LE","LES","L'")
     for( a in vecArticle) {
         from <- paste("[-,\\s]*\\(",a,"\\)[-,\\s]*\\(?([0-9]{1,2}|2[A,B])?\\)?[-,\\s]*$",sep="")
         ifrom <- grep(from,data$COMMUNE,perl=TRUE)
-        cat("(",a,"): ",gsub("\\","\\\\",from,fixed=TRUE),"\n","    -> ",length(ifrom),"\n",sep="")
+        cat("(",a,"): ",gsub("\\","\\\\",from,fixed=TRUE),"\n\n","    -> ",length(ifrom),"\n\n",sep="")
         data$COMMUNE[ifrom] <- paste(a,ifelse(a=="L'",""," "),data$COMMUNE[ifrom],sep="")
         data$COMMUNE[ifrom] <- gsub(from,"",data$COMMUNE[ifrom],perl=TRUE)
 
     }
 
-    data$SEXE_raw <- data$SEXE
-    data$AGE_raw <- data$AGE
-    data$TAXON_raw <- data$TAXON
 
-    data$SEXE <- iconv(data$SEXE, from = 'UTF-8', to = 'ASCII//TRANSLIT')
-    data$AGE <- iconv(data$AGE, from = 'UTF-8', to = 'ASCII//TRANSLIT')
-
-
-
-
-
-
-
-    "Vespertilionidae Gray 1821 Myotis Kaup 1829 Myotis emarginatus E Geoffroy 1806,?,Plecotus auritus Linnaeus 1758 Barbastella barbastellus Schreber 1774,Eptesicus serotinus Schreber 1774 Nyctalus leisleri Kuhl 1817,Chiroptera sp,Chauve-souris sp,CHIIND,Chiroptera,Nyctalus leisleri Kuhl 1817 Eptesicus serotinus Schreber 1774,\\?"; to <- "Chiroptera"
-
-    "Myotis mystacinus_Myotis bechsteinii_Myotis daubentonii,Myotis emarginatus_Myotis mystacinus,Myotis daubentonii / nattereri,Murin de Natterer, Vespertilion de Natterer, Murin d_Alcathoe,Murin de Natterer, Vespertilion de Natterer, Murin d_Alcathoe,Murin sp,MYOSPE,Myotis specie,Myotis Kaup 1829,Msp,MYOMO,MYONT,Myotis bulgaricus,Myotis bulgaricus,Myotis nattereri Kuhl 1817 Myotis alcathoe Helversen  Heller 2001"; to <- "Myotis sp"
-
-    "Myotis mystacinus_Myotis brandtii,Myotis mystacinus / brandtii,MYOBRAMYS,MYOMYSBRA,MYOMYS-BRA,Myotis mystacinus Kuhl 1817 Myotis brandti Eversmann 1845,Myotis mystacinus Kuhl 1817 Myotis brandtii Eversmann 1845,Myotis mystacinus/brandtii,Myotis mystacinusMyotis brandtii,Myotis myst/bra"; to <- "Myotis mystacinus_Myotis brandtii"
-
-    "Myotis myotis Borkhausen 1797 Myotis blythii Tomes 1857,Myotis myotis_Myotis blythii,Myotis blythii Tomes 1857 Myotis myotis Borkhausen 1797,MURMUR,Myotis myotis / Myotis oxygnathus,Myotis myotisMyotis blythii,Myotis myotis/blythii"; to <- "Myotis myotis_Myotis blythii"
-
-    "Myotis myotis Borkhausen 1797 Myotis bechsteinii Kuhl 1817"; to <- "Myotis myotis_Myotis bechsteinii"
-
-    "Myotis nattereri_Myotis escalerai,Murin de Natterer, Vespertilion de Natterer, Murin d_Escalera,Myotis nattereri Kuhl 1817 Myotis escalerai Cabrera 1904,Myotis escalerai Cabrera 1904 Myotis nattereri Kuhl 1817,Murin d_Escalera, Murin de Natterer, Vespertilion de Natterer"; to <- "Myotis nattereri_Myotis escalerai"
-
-    "Myotis emarginatus E Geoffroy 1806 Myotis mystacinus Kuhl 1817"; to <- "Myotis emarginatus_Myotis mystacinus"
-
-    "Myotis mystacinus Kuhl 1817 Myotis bechsteinii Kuhl 1817 Myotis daubentonii Kuhl 1817"; to <- "Myotis mystacinus_Myotis bechsteinii_Myotis daubentonii"
-
-    "Myotis nattereri_Spa,Myotis nattereri/Spa,Myotis spA,Myotis nattereriSpa,Myotis SpA"; to <- "Myotis nattereri_Spa"
-
-    "Myotis mystacinusMyotis brandtii Myotis alcathoe,Myotis mystacinus_Myotis alcathoe_Myotis brandtii,Myotis alcathoe/brandtii/mystacinus,Complexe Myotis alcathoe/brandtii/mystacinus,MYOALCBRAMYS,Myotis mystacinus/brandtii/alcathoe"; to <- "Myotis mystacinus_Myotis alcathoe_Myotis brandtii"
-
-    "Myotis mystacinus / alcathoe,Myotis mystacinus_Myotis alcathoe,Myotis alcathoe-mystacinus,Complexe Myotis alcathoe-mystacinus,Murin mystalcathoe,Murin mystalcathoé,MYOALCMYS,Myotis alcathoe Helversen  Heller 2001 Myotis mystacinus Kuhl 1817,Myotis myst/alcathoe,Myotis mystacinus Kuhl 1817 Myotis alcathoe Helversen  Heller 2001"; to <- "Myotis mystacinus_Myotis alcathoe"
-
-    "Myotis brandtii Eversmann 1845 Myotis daubentonii Kuhl 1817,Myotis daubentonii Kuhl 1817 Myotis brandtii Eversmann 1845"; to <- "Myotis brandtii_ Myotis daubentonii"
-
-    "Plecotus austriacus_Plecotus macrobullaris,Plecotus austriacus_Plecotus auritus,Plecotus macrobullaris Kuzjakin 1965 Plecotus auritus auritus Linnaeus 1758,Oreillard montagnard, Oreillard roux, Oreillard septentrional,Oreillard sp,PLESPE,PLESP,PLE AUT,PLEIND,Plecotus species,Plecotus specie,Plecotus sp,PLE SP,Osp,Plecotus E Geoffroy 1818"; to <- "Plecotus"
-
-    "Pipistrellus specie,Pipistrellus,Pipistrelle sp,Pipistrellus nathusius ?,Pipistrel sp,PIPIND,Pipistrellus species,Pipistrellus sp"; to <- "Pipistrellus"
-
-
-
-    "Pipistrellus kuhlii_Pipistrellus nathusii,Pipistrelle de Kuhl/Nathusius,Pipkuh-Pipnat"; to <- "Pipistrellus kuhlii_Pipistrellus nathusii"
-
-    "Pipistrellus pygmaeus Leach 1825 Pipistrellus nathusii Keyserling  Blasius 1839,Pipistrellus nathusii_Pipistrellus pygmaeus,Pipistrellus nathusii Keyserling  Blasius 1839 Pipistrellus pygmaeus Leach 1825"; to <- "Pipistrellus nathusii_Pipistrellus pygmaeus"
-
-    "Pipistrelle commune, Pipistrelle pygmée,Pipistrellus pipistrellus Schreber 1774 Pipistrellus pygmaeus Leach 1825,PIPPIPPYG,Pipistrellus pipistrellus / pygmaeus,Pipistrellus pipistrellus Schreber, 1774, Pipistrellus pygmaeus Leach, 1825"; to <- "Pipistrellus pygmaeus_Pipistrellus pipistrellus"
-
-    "Pipistrellus pipistrellus_Pipistrellus kuhlii,Pipistrellus pipistrellus Schreber 1774 Pipistrellus kuhli Kuhl 1817"; to <- "Pipistrellus pipistrellus_Pipistrellus kuhlii"
-
-    "Plecotus austriacus JB Fischer 1829 Plecotus auritus Linnaeus 1758,Plecotus auritus Linnaeus 1758 Plecotus austriacus JB Fischer 1829"; to <- "Plecotus austriacus_Plecotus auritus"
-
-"Plecotus austriacus JB Fischer 1829 Plecotus macrobullaris Kuzjakin 1965,Plecotus macrobullaris Kuzjakin 1965 Plecotus austriacus JB Fischer 1829"; to <- "Plecotus austriacus_Plecotus macrobullaris"
-
-    "Rhinolophus euryale_Rhinolophus ferrumequinum,RHIEURFER"; to <- "Rhinolophus euryale_Rhinolophus ferrumequinum"
-
-    "NYCIND"; to <- "Nyctalus sp"
-
-    "Rhinolophus"; to <- "Rhinolophus"
-
-    "RAS,Chiropteres : Aucune observation,Aucune espèce,Aucune chauve-souris"; to <- "BREDOUILLE"
-
-
-    "Barbastelle d_Europe, Barbastelle,Barbastella  Barbastella barbastellus Schreber 1774,Barbar,BARBAR,Barbastella barbastellus,Barbastella barbastellus Schreber 1774,Barbastella barbastellus Schreber 1774 Barbastella,Barbastella Barbastella barbastellus Schreber 1774,Barbastelle d_Europe"; to <- "Barbastella barbastellus"
-
-    "Eptesicus serotinus,Sérotine commune,Eptesicus serotinus Schreber 1774,EPTSER,Eptser,Serotine commune"; to <- "Eptesicus serotinus"
-
-    "Eptesicus nilssoni Keyserling  Blasius 1839,Eptesicus nilssonii,Eptesicus nilssonii Keyserling  Blasius 1839,EPTNIL"; to <- "Eptesicus nilssonii"
-
-    "Grand murin,Grand Murin,MYOMYO,Myomyo,grand murin,Myotis myotis,Myotis myotis Borkhausen 1797"; to <- "Myotis myotis"
-
-    "Grand rhinolophe,Rhinolophus ferrumequinum,grand rhinolophe,RHIFER,Rhifer,Rhino ferrumequinum,Rhinolophus ferrumequinum Schreber 1774,Rhinolophus ferrumequinum ferrumequinum Schreber 1774"; to <- "Rhinolophus ferrumequinum"
-
-    "HUPSAV,HYPSAV,Hypsugo savii,Vespère de Savi,Hypsugo savii Bonaparte 1837"; to <- "Hypsugo savii"
-
-    "Miniopterus schreibersi,Minioptère de Schreibers,MinioptA?re de Schreibers,Miniopterus schreibersi Kuhl 1817,Miniopterus schreibersii Kuhl 1817,MINSCH,Miniopterus schreibersii"; to <- "Miniopterus schreibersii"
-
-    "Myotis mystacinus,Murin à moustaches,murin à moustaches,Myotis mystacinus,Murin à  moustaches, Vespertilion à  moustaches,Murin à moustaches, Vespertilion à moustaches,murin à  moustaches,Murin à  moustaches,Murin à moustaches,Murin a moustaches,MYOMYS,Myomys,Myotis mystacinus Kuhl 1817"; to <- "Myotis mystacinus"
-
-    "Murin à oreilles échancrées, Vespertilion à oreilles échancrées,Murin à oreilles échancrées,Myotis emarginatus,Murin à  oreilles échancrées,Myoema,MYOEMA,Myotis emarginatus E Geoffroy 1806,Myotis emarginatus E Geoffroy 1806 Vespertilionidae Gray 1821 Myotis Kaup 1829"; to <- "Myotis emarginatus"
-
-    "Murin d_Alcathoe,Myoalc,MYOALC,Myotis alcatho?,Myotis alcathoe Helversen  Heller 2001"; to <- "Myotis alcathoe"
-
-    "Myotis bechsteinii,Murin de Bechstein,Myobec,MYOBEC,Myotis bechsteini,Myotis bechsteini Kuhl 1817,Myotis bechsteinii Kuhl 1817"; to <- "Myotis bechsteinii"
-
-    "Myotis daubentonii,murin de Daubenton,Murin de Daubenton,Myodau,MYODAU,MYODAB,Myotis daubentoni,Myotis daubentoni,Myotis daubentoni Kuhl 1817,Myotis daubentonii Kuhl 1817"; to <- "Myotis daubentonii"
-
-    "Murin de Natterer, Vespertilion de Natterer,Murin de Natterer,Myotis nattereri,MYONAT,Myonat,Myotis nattereri Kuhl 1817,Myotis nattererii,Pipnat"; to <- "Myotis nattereri"
-
-    "MYOBRA,Murin de Brandt,Myotis brandtii Eversmann, 1845,Myotis brandtii,Myotis brandti Eversmann 1845,Myotis brandtii Eversmann 1845"; to <- "Myotis brandtii"
-
-    "Myotis blythii,MYOBLY,Petit Murin,Myotis blythii,PETMUR,Myotis blythii Tomes 1857,Myotis blythii oxygnathus Monticelli 1885,Myotis oxygnathus,Myotis oxygnathus Monticelli 1885"; to <- "Myotis blythii"
-
-    "MYOCAP,Myotis capaccini,Myotis capaccinii Bonaparte 1837"; to <- "Myotis capaccinii"
-
-    "MYODAS"; to <- "Myotis dasycneme"
-
-    "Myotis escalerai Cabrera 1904"; to <- "Myotis escalerai"
-
-    "NLAS,NYCLAS,Nyctalus lasiopterus Schreber 1780"; to <- "Nyctalus lasiopterus"
-
-    "Nyctalus leisleri Kuhl 1817,Nyctalus leisleri,Nyctalus leisleri leisleri Kuhl 1817,Nyctalus leislerii,NYCLEI,Nyclei,Noctule de Leisler,Nyctalus leisleri leisleri,Nyctalus leisleri leisleri"; to <- "Nyctalus leisleri"
-
-    "Nyctalus noctula Schreber 1774,NYCNOC,Nyctalus noctula,Noctule commune"; to <- "Nyctalus noctula"
-
-    "Oreillard gris, Oreillard méridional,Oreillard gris,Plecotus austriacus,plecotus austriacus,P austriacus,Plecotus austriacus JB Fischer 1829,PLEAUS,Pleaus"; to <- "Plecotus austriacus"
-
-    "Oreillard roux, Oreillard septentrional,Plecotes auritus hispanicus Bauer 1957,P auritus,Plecotus auritus Linnaeus 1758 Plecotus auritus auritus Linnaeus 1758,Plecotus auritus,plecotus auritus,Oreillard roux,Plecotus auritus Linnaeus 1758,Plecotus auritus auritus Linnaeus 1758,PLEAUR,Pleaur"; to <- "Plecotus auritus"
-
-    "P macrobullaris,Plecotus macrobullaris Kuzjakin 1965,PLEMAC,Oreillard montagnard"; to <- "Plecotus macrobullaris"
-
-    "Petit rhinolophe,Rhinolophus hipposideros,RHIHIP,Rhihip,Rhino hipposideros,Rhinolophus hipposideros Bechstein 1800"; to <- "Rhinolophus hipposideros"
-
-    "RHIEUR,Rhino euryale,Rhinolophus euryale Blasius 1853"; to <- "Rhinolophus euryale"
-
-    "PIP KUH,Pipistrelle kuhlii,pipistrellus kuhlii,Pipistrellus kuhlii,PIPKHU,Pipkuh,PIPKUH,Pipistrellus kuhlii Kuhl 1817,Pipistrellus kuhli Kuhl 1817,Pipistrelle de Kuhl,Pipistrel kuhli"; to <- "Pipistrellus kuhlii"
-
-    "Pipnat,PIP NAT,Pipistrelle de Nathusius,Pipistrellus nathusii,Pipistrellus nathusii Keyserling  Blasius 1839,PIPNAT,PIPNAT"; to <- "Pipistrellus nathusii"
-
-    "Pipistrel pipistrellus,Pipistrellus pipistrellus,Pipistrellus pipistrellus pipistrellus,Pipistrellus pipistrellus pipistrellus,Pipistrelle commune,Pipistrellus pipistrellus pipistrellus,Pipistrellus pipistrellus Schreber 1774,PIPPIP,PiPPIP,Pippip"; to <- "Pipistrellus pipistrellus"
-
-    "Pipistrel pygmaeus,Pipistrelle pygmaeus,Pipistrellus pygmaeus,PIPPYG,Pipistrellus cf pygameus,Pipistrellus pygmaeus Leach 1825"; to <- "Pipistrellus pygmaeus"
-
-
-"VESMUR,Sérotine bicolore,Vespertilio murinus Linnaeus 1758"; to <- "Vespertilio murinus"
-
-    "Tadarida teniotis Rafinesque 1814,Molosse de Cestoni,TADTEN"; to <- "Tadarida teniotis"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    cat("\nCorrectifs: ",nrow(com_cor)," correctifs\n\n",sep="")
+    cat("\n\nCorrectifs: ",nrow(com_cor)," correctifs\n\n",sep="")
 
     lesfieldcorrectif <- paste("les",length(field_2_correctif),"colonnes")
 
     for(i in 1:nrow(com_cor)) {
         ##  i=1
-
         from <- gsub("\\\\","\\",com_cor[i,search],fixed=TRUE)
         ##  print(from)
         the_field <- com_cor[i,field]
@@ -460,13 +378,15 @@ corrections <- function(data=NULL,com_cor="library/correctifs.csv",output=FALSE,
         strict <- com_cor[i,strictly]
         multi <-  com_cor[i,multiple]
         for(field in the_field) {
-            cat(i,": colonne:",field," | action:",gsub("\\","\\\\",as.vector(from),fixed=TRUE)," -> ", to," | subset:",sub,"  | nom complet: ",strict,"\n")
+            cat(i,": colonne:",field," | action:",gsub("\\","\\\\",as.vector(from),fixed=TRUE)," -> ", to," | subset:",sub,"  | nom complet: ",strict,"\n\n")
+
             if(sub) { # on remplace un sous ensemble des noms
                 col <- com_cor[i,fieldRestrict]
                 val <- com_cor[i,restrict]
-                cat("     ",col," %in% ",val," \n")
+                cat("     ",col," %in% ",val," \n\n")
                 if(strict) { # on remplace tout le nom
                     if (multi) from <- strsplit(from,",")
+                    if(field == "TAXON") browser()
                     nbcor <- nrow(data[data[[col]] %in% val & data[[field]] %in% from])
                     if(nbcor>0)
                         set(data,i=which(data[[col]] %in% val & data[[field]] %in% from),j=field,value=to)
@@ -487,13 +407,13 @@ corrections <- function(data=NULL,com_cor="library/correctifs.csv",output=FALSE,
                         data[[field]] <- gsub(from,to,data[[field]],perl=TRUE)
                 } # END ELSE strict
             } #END ELSE sub
-            cat("    -> ",nbcor," remplacement(s)\n")
+            cat("    -> ",nbcor," remplacement(s)\n\n")
         } #END for(field in the_field) {
     } #END for(i in 1:nrow(com_cor))
 
 
     if(save) {
-        if(is.null(fileoutput))fileoutput<- paste0(format(as.Date(Sys.time()),"%Y%m%d"),"_clean_commune.csv")
+        if(is.null(fileoutput))fileoutput<- paste0(format(as.Date(Sys.time()),"%Y%m%d"),"_clean.csv")
         file_data <- paste0(repOut,fileoutput)
         cat("\n\n")
         cat("  -->", file_data)
@@ -502,6 +422,27 @@ corrections <- function(data=NULL,com_cor="library/correctifs.csv",output=FALSE,
 
     if(output) return(data)
 } # END commune_corrections
+
+
+  "0"   "0: Nombreux poils, non apparents"  "JA"  "Null"  "Nulli"  "NULLI";"M0"
+
+
+tout2$MAMELLES[tout2$MAMELLES == "2: Apparents et gonflés, sans poils"|tout2$MAMELLES == "2"|tout2$MAMELLES == "3: Apparents et gonflés, production de lait"|tout2$MAMELLES == "A"|tout2$MAMELLES == "all"|tout2$MAMELLES == "ALL"|tout2$MAMELLES == "allaitante"|tout2$MAMELLES == "Allaitante"|tout2$MAMELLES == "Tétons dégarnis. mâchouillés"|tout2$MAMELLES == "Tétons dégarnis. mâchouillés "]<- "M2"
+tout2$MAMELLES[tout2$MAMELLES == ""|tout2$MAMELLES == "/"|tout2$MAMELLES == ""|tout2$MAMELLES == "RAS"|tout2$MAMELLES == "T0"|tout2$MAMELLES == "XX"|tout2$MAMELLES == "?"|tout2$MAMELLES == "M1?"|tout2$MAMELLES == "M"|tout2$MAMELLES == "N"|tout2$MAMELLES == "Non allaitante"|tout2$MAMELLES == "P"|tout2$MAMELLES == "DA?"|tout2$MAMELLES == "03-janv"|tout2$MAMELLES == "05-janv"] <- "NA"
+tout2$MAMELLES[tout2$MAMELLES == "4: Apparents et flasques, plus de lait, pourtours roses"|tout2$MAMELLES =="4"] <- "M3"
+tout2$MAMELLES[tout2$MAMELLES == " 1/4"|tout2$MAMELLES == " 4/1"|tout2$MAMELLES == "04-janv"|tout2$MAMELLES == "Tétons dégarnis. bien dégagés.non mâchouillés. pas de lait"|tout2$MAMELLES == "Tétons dégarnis. non mâchouillés"|tout2$MAMELLES == "5: Apparents et petits, pas de lait, pourtours roses"|tout2$MAMELLES == "5"|tout2$MAMELLES == "4 ou 5"] <- "M3_M1"
+tout2$MAMELLES[tout2$MAMELLES == " M1"|tout2$MAMELLES == "1"|tout2$MAMELLES == "1: Apparents, pourtour rose, touffe de poils au bout"|tout2$MAMELLES == "1"|tout2$MAMELLES == "Mulltipart"|tout2$MAMELLES == "MULTi"|tout2$MAMELLES == "MULTI"|tout2$MAMELLES == "DA"] <- "M1"
+tout2$MAMELLES[tout2$MAMELLES == "0 ou 5"|tout2$MAMELLES == "Prim"|tout2$MAMELLES == "PRIMI"] <- "M0_M1"
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -519,23 +460,23 @@ update_correctif_file <- function(data,dataloc_insee_erreur,file_cor="library/co
         ii <- as.vector(strsplit(answer,",")[[1]])
         ii <- gsub("(^\\s+|\\s+$|(?<=\\s)\\s)","",ii,perl=TRUE)
         ii <- ii[ii!=""]
-        cat("Vous avez saisie les lignes suivante: ", ii,"\n")
+        cat("Vous avez saisie les lignes suivante: ", ii,"\n\n")
         ii <- suppressWarnings(as.numeric(ii))
     }
 
     while(answer != "" & (0 %in% ii | any(is.na(ii)) | max(ii)> nb_erreur)) {
-        cat(" ERREUR: Les numéros de lignes ne sont pas valide, les resaisirs ! \n")
+        cat(" ERREUR: Les numéros de lignes ne sont pas valide, les resaisirs ! \n\n")
         answer <- readline(prompt = "Noter les numéros de ligne (en les séparants d'une virgule x,x,x) qui ne doivent pas être corriger sans filtre. Si tous les corrections peuvent être intégées au fichiers de correctif tapez <ENTRER>:")
         if(answer != "") {
             ii <- as.vector(strsplit(answer,",")[[1]])
             ii <- gsub("(^\\s+|\\s+$|(?<=\\s)\\s)","",ii,perl=TRUE)
             ii <- ii[ii!=""]
-            cat("   Vous avez saisie les lignes suivante: ", ii,"\n")}
+            cat("   Vous avez saisie les lignes suivante: ", ii,"\n\n")}
     }
 
     if(answer != "") {
-        cat("\n Pour les ",length(ii)," commune(s), veuillez saisir la colonnes de selection puis la ou les valeurs retenues:\n",sep="")
-        cat("Les colonnes disponibles:\n ", colnames(data),"\n")
+        cat("\n\n Pour les ",length(ii)," commune(s), veuillez saisir la colonnes de selection puis la ou les valeurs retenues:\n\n",sep="")
+        cat("Les colonnes disponibles:\n\n ", colnames(data),"\n\n")
         for(i in ii) {
                                         # i=6
 
@@ -543,33 +484,33 @@ update_correctif_file <- function(data,dataloc_insee_erreur,file_cor="library/co
             col <- readline(prompt = "la colonne:")
             col <- gsub("(^\\s+|\\s+$|(?<=\\s)\\s)","",col,perl=TRUE)
             col <- col[col!=""]
-            cat("   Vous avez saisie la colonne: ", col,"\n")
+            cat("   Vous avez saisie la colonne: ", col,"\n\n")
 
             while(!(col %in% colnames(data))) {
                 col <- readline(prompt = "ERREUR! la colonne n'est pas valide, ressaisissez la colonne:")
                 col <- gsub("(^\\s+|\\s+$|(?<=\\s)\\s)","",col,perl=TRUE)
                 col <- col[col!=""]
-                cat("   Vous avez saisie la colonne: ",col,"\n")
+                cat("   Vous avez saisie la colonne: ",col,"\n\n")
             } # END while(!(col %in% colnames(data)))
 
             val <- readline(prompt = "La ou les valeurs (séparées par une virgule:")
             val <- as.vector(strsplit(val,",")[[1]])
             val <- gsub("(^\\s+|\\s+$|(?<=\\s)\\s)","",val,perl=TRUE)
             val <- val[val!=""]
-            cat("   Vous avez saisie la ou les valeur(s) suivante(s): ", val,"\n")
+            cat("   Vous avez saisie la ou les valeur(s) suivante(s): ", val,"\n\n")
             nbval <- nrow(data[data[[col]] %in% val & data[["COMMUNE"]] == erreur_nom_com$COMMUNE[i]])
 
             while(nbval == 0) {
-                cat("ERREUR aucune ligne concernée par cette valeur, veuillez saisir une valeur valide ! \n")
+                cat("ERREUR aucune ligne concernée par cette valeur, veuillez saisir une valeur valide ! \n\n")
                 val <- readline(prompt = "La ou les valeurs (séparées par une virgule:")
                 val <- as.vector(strsplit(val,",")[[1]])
                 val <- gsub("(^\\s+|\\s+$|(?<=\\s)\\s)","",val,perl=TRUE)
                 val <- val[val!=""]
-                cat("   Vous avez saisie la ou les valeur(s) suivante(s): ", val,"\n")
+                cat("   Vous avez saisie la ou les valeur(s) suivante(s): ", val,"\n\n")
                 nbval <- nrow(data[data[[col]] %in% val & data[["COMMUNE"]] == erreur_nom_com$COMMUNE[i]])
             } #END while(nbval == 0)
 
-            cat("  -> ",nbval," ligne(s) affectér par la correction\n",sep="")
+            cat("  -> ",nbval," ligne(s) affectér par la correction\n\n",sep="")
             tab_cor <- rbind(tab_cor,data.table(search=erreur_nom_com$COMMUNE[i],replaceBy=erreur_nom_com$NOM_COMM[i],restrict=val,fieldRestrict=col,stricly=TRUE,comment=""))
         } # END for(i in ii)
         erreur_nom_com <- erreur_nom_com[-ii,]
@@ -579,11 +520,11 @@ update_correctif_file <- function(data,dataloc_insee_erreur,file_cor="library/co
         tab_cor <- rbind(tab_cor,data.table(search=erreur_nom_com$COMMUNE,replaceBy=erreur_nom_com$NOM_COMM,restrict="",fieldRestrict="",stricly=TRUE,comment=""))
     } # END IF ELSE answer
 
-    cat("\nLes corrections ajoutées au fichier de correctif des communes:\n")
+    cat("\n\nLes corrections ajoutées au fichier de correctif des communes:\n\n")
     print(tab_cor)
     cat(" -->",file_cor)
     write.table(tab_cor,file_cor,sep=";",row.names=FALSE,col.names=FALSE,append=TRUE)
-    cat(" DONE !\n")
+    cat(" DONE !\n\n")
 }
 
 
@@ -679,13 +620,13 @@ add_localite <- function(data="data/data_2019-06-06_clean.csv",
     dataloc$DEPARTEMENT[dataloc$DEPARTEMENT==""] <- NA
     dataloc$DEPARTEMENT2[dataloc$DEPARTEMENT2==""] <- NA
 
-    cat(nrow(dataloc),"données à georéférencer\n")
+    cat(nrow(dataloc),"données à georéférencer\n\n")
 
     ## INSEE
-    cat("  1) Recherche des localisation par le code INSEE\n")
+    cat("  1) Recherche des localisation par le code INSEE\n\n")
     dataloc_insee <- subset(dataloc,!is.na(INSEE),select=c("pk_data","COMMUNE","INSEE"))
 
-    cat(nrow(dataloc_insee),"données avec un code INSEE\n")
+    cat(nrow(dataloc_insee),"données avec un code INSEE\n\n")
 
     com_table2 <- com_table
     com_table2$INSEE <- as.character(com_table2$INSEE)
@@ -694,9 +635,9 @@ add_localite <- function(data="data/data_2019-06-06_clean.csv",
     dataloc_insee <- left_join(dataloc_insee,com_table2,by="INSEE")
     dataloc_insee_inconnu <- subset(dataloc_insee,is.na(NOM_COMM))
     if(nrow(dataloc_insee_inconnu)>0) {
-        cat("ATTENTION",nrow(dataloc_insee_inconnu),"code(s) INSEE inconnu(s):\n")
+        cat("ATTENTION",nrow(dataloc_insee_inconnu),"code(s) INSEE inconnu(s):\n\n")
         cat(dataloc_insee_inconnu[,"INSEE"])
-        cat("\n")
+        cat("\n\n")
         dataloc_orphelin <- rbind(dataloc_orphelin,dataloc_insee_inconnu[,..newcol])
     }
 
@@ -709,71 +650,71 @@ add_localite <- function(data="data/data_2019-06-06_clean.csv",
     }# END if(nrow(dataloc_insee_erreur))
 
 
-    cat("  ==>",nrow(dataloc_insee),"données geo-référencée par le code INSEE\n")
+    cat("  ==>",nrow(dataloc_insee),"données geo-référencée par le code INSEE\n\n")
     dataloc_new <- dataloc_insee[,newcol]
 
     dataloc <- subset(dataloc,!(pk_data %in% dataloc_new$pk_data))
-    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n")
+    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n\n")
 
     ## DEPARTEMENT + COMMUNE
-    cat("  2) Recherche des localisation par le DEPARTEMENT\n")
+    cat("  2) Recherche des localisation par le DEPARTEMENT\n\n")
     dataloc_dep <- subset(dataloc,!is.na(DEPARTEMENT) & !is.na(COMMUNE),select=c("pk_data","COMMUNE","DEPARTEMENT"))
-    cat(nrow(dataloc_dep),"données avec un DEPARTEMENT\n")
+    cat(nrow(dataloc_dep),"données avec un DEPARTEMENT\n\n")
 
     dataloc_dep <- left_join(dataloc_dep,com_table,by=c("DEPARTEMENT","COMMUNE"))
 
     dataloc_dep_inconnu <- subset(dataloc_dep,is.na(INSEE))
     if(nrow(dataloc_dep_inconnu)>0) {
         uniquedata <-data.table(unique(dataloc_dep_inconnu[,c("COMMUNE","DEPARTEMENT")]))
-        cat("ATTENTION",nrow(uniquedata)," association(s) COMMUNE DEPARTEMENT inconnue(s) affectant",nrow(dataloc_dep_inconnu),"données:\n")
+        cat("ATTENTION",nrow(uniquedata)," association(s) COMMUNE DEPARTEMENT inconnue(s) affectant",nrow(dataloc_dep_inconnu),"données:\n\n")
         print(uniquedata)
 
         dataloc_orphelin <- rbind(dataloc_orphelin,dataloc_dep_inconnu[,newcol])
     }
 
-    cat("  ==>",nrow(dataloc_dep),"données geo-référencée par l'association COMMUNE DEPARTEMENT\n")
+    cat("  ==>",nrow(dataloc_dep),"données geo-référencée par l'association COMMUNE DEPARTEMENT\n\n")
     dataloc_new <- rbind(dataloc_new,dataloc_dep[,newcol])
 
     dataloc <- subset(dataloc,!(pk_data %in% dataloc_new$pk_data))
-    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n")
+    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n\n")
 
 
     ## DEPARTEMENT2 + COMMUNE
 
-    cat("  3) Recherche des localisation par le code CODE_DEPT\n")
+    cat("  3) Recherche des localisation par le code CODE_DEPT\n\n")
     dataloc_codedep <- subset(dataloc,!is.na(CODE_DEPT) & !is.na(COMMUNE),select=c("pk_data","COMMUNE","CODE_DEPT"))
-    cat(nrow(dataloc_codedep),"données avec un CODE_DEPT\n")
+    cat(nrow(dataloc_codedep),"données avec un CODE_DEPT\n\n")
 
     dataloc_codedep <- left_join(dataloc_codedep,com_table,by=c("CODE_DEPT","COMMUNE"))
 
     dataloc_codedep_inconnu <- subset(dataloc_codedep,is.na(INSEE))
     if(nrow(dataloc_codedep_inconnu)>0) {
         uniquedata <-data.table(unique(dataloc_codedep_inconnu[,c("COMMUNE","CODE_DEPT")]))
-        cat("ATTENTION",nrow(uniquedata)," association(s) COMMUNE CODE_DEPT inconnue(s) affectant",nrow(dataloc_codedep_inconnu),"données:\n")
+        cat("ATTENTION",nrow(uniquedata)," association(s) COMMUNE CODE_DEPT inconnue(s) affectant",nrow(dataloc_codedep_inconnu),"données:\n\n")
         print(uniquedata)
 
         dataloc_orphelin <- rbind(dataloc_orphelin,dataloc_codedep_inconnu[,newcol])
     }
 
-    cat("  ==>",nrow(dataloc_codedep),"données geo-référencée par l'association COMMUNE CODE_DEPT\n")
+    cat("  ==>",nrow(dataloc_codedep),"données geo-référencée par l'association COMMUNE CODE_DEPT\n\n")
     dataloc_new <- rbind(dataloc_new,dataloc_codedep[,newcol])
 
     dataloc <- subset(dataloc,!(pk_data %in% dataloc_new$pk_data))
-    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n")
+    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n\n")
 
 
 
     ## REGION + COMMUNE
-    cat("  4) Recherche des localisation par le code REGION\n")
+    cat("  4) Recherche des localisation par le code REGION\n\n")
     dataloc_region <- subset(dataloc,!is.na(REGION) & !is.na(COMMUNE),select=c("pk_data","COMMUNE","REGION"))
-    cat(nrow(dataloc_region),"données avec une REGION\n")
+    cat(nrow(dataloc_region),"données avec une REGION\n\n")
 
     dataloc_region <- left_join(dataloc_region,com_table,by=c("REGION","COMMUNE"))
 
     dataloc_region_inconnu <- subset(dataloc_region,is.na(INSEE))
     if(nrow(dataloc_region_inconnu)>0) {
         uniquedata <-data.table(unique(dataloc_region_inconnu[,c("COMMUNE","REGION")]))
-        cat("ATTENTION",nrow(uniquedata)," association(s) COMMUNE REGION inconnue(s) affectant",nrow(dataloc_region_inconnu),"données:\n")
+        cat("ATTENTION",nrow(uniquedata)," association(s) COMMUNE REGION inconnue(s) affectant",nrow(dataloc_region_inconnu),"données:\n\n")
         print(uniquedata)
 
         dataloc_region <- subset(dataloc_region,!is.na(INSEE))
@@ -788,12 +729,12 @@ add_localite <- function(data="data/data_2019-06-06_clean.csv",
         communeDoublon <- unique(dataDoublon_region$COMMUNE)
         dataDoublon <-  unique(dataDoublon_region$pk_data)
 
-        cat("ATTENTION",length(dataDoublon), "doublon(s)\n les pk_data:\n",dataDoublon,"\n")
-        cat(length(communeDoublon),"commune(s) concernée(s):\n",communeDoublon,"\n")
+        cat("ATTENTION",length(dataDoublon), "doublon(s)\n\n les pk_data:\n\n",dataDoublon,"\n\n")
+        cat(length(communeDoublon),"commune(s) concernée(s):\n\n",communeDoublon,"\n\n")
 
         print(communeDoublon_region)
 
-        cat("Pour ces data aucunes communes n'est affectées\n")
+        cat("Pour ces data aucunes communes n'est affectées\n\n")
 
         dataloc_region <- subset(dataloc_region,!(pk_data %in% dataDoublon))
         dataloc_orphelin <- rbind(dataloc_orphelin,subset(dataloc_region,(pk_data %in% dataDoublon))[,newcol])
@@ -801,24 +742,24 @@ add_localite <- function(data="data/data_2019-06-06_clean.csv",
 
 
 
-    cat("  ==>",nrow(dataloc_region),"données geo-référencée par l'association COMMUNE REGION\n")
+    cat("  ==>",nrow(dataloc_region),"données geo-référencée par l'association COMMUNE REGION\n\n")
     dataloc_new <- rbind(dataloc_new,dataloc_region[,newcol])
 
     dataloc <- subset(dataloc,!(pk_data %in% dataloc_new$pk_data))
-    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n")
+    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n\n")
 
 
     ## REGION_ANCIEN + COMMUNE
-    cat("  5) Recherche des localisation par la REGION ancienne\n")
+    cat("  5) Recherche des localisation par la REGION ancienne\n\n")
     dataloc_region_ancien <- subset(dataloc,!is.na(REGION) & !is.na(COMMUNE),select=c("pk_data","COMMUNE","REGION"))
-    cat(nrow(dataloc_region_ancien),"données encore avec une REGION \nnous les concidérons maintenant comme les noms des anciennes regions\n")
+    cat(nrow(dataloc_region_ancien),"données encore avec une REGION \n\nnous les concidérons maintenant comme les noms des anciennes regions\n\n")
     colnames(dataloc_region_ancien)[3] <- "REGION_ANCIEN"
     dataloc_region_ancien <- left_join(dataloc_region_ancien,com_table,by=c("REGION_ANCIEN","COMMUNE"))
 
     dataloc_region_ancien_inconnu <- subset(dataloc_region_ancien,is.na(INSEE))
     if(nrow(dataloc_region_ancien_inconnu)>0) {
         uniquedata <-data.table(unique(dataloc_region_ancien_inconnu[,c("COMMUNE","REGION_ANCIEN")]))
-        cat("ATTENTION",nrow(uniquedata)," association(s) COMMUNE REGION_ANCIEN inconnue(s) affectant",nrow(dataloc_region_ancien_inconnu),"données:\n")
+        cat("ATTENTION",nrow(uniquedata)," association(s) COMMUNE REGION_ANCIEN inconnue(s) affectant",nrow(dataloc_region_ancien_inconnu),"données:\n\n")
         print(uniquedata)
 
         dataloc_orphelin <- rbind(dataloc_orphelin,dataloc_region_ancien_inconnu[,newcol])
@@ -833,12 +774,12 @@ add_localite <- function(data="data/data_2019-06-06_clean.csv",
         communeDoublon <- unique(dataDoublon_region_ancien$COMMUNE)
         dataDoublon <-  unique(dataDoublon_region_ancien$pk_data)
 
-        cat("ATTENTION",length(dataDoublon), "doublon(s)\n les pk_data:\n",dataDoublon,"\n")
-        cat(length(communeDoublon),"commune(s) concernée(s):\n",communeDoublon,"\n")
+        cat("ATTENTION",length(dataDoublon), "doublon(s)\n\n les pk_data:\n\n",dataDoublon,"\n\n")
+        cat(length(communeDoublon),"commune(s) concernée(s):\n\n",communeDoublon,"\n\n")
 
         print(communeDoublon_region_ancien)
 
-        cat("Pour ces data aucunes communes n'est affectées\n")
+        cat("Pour ces data aucunes communes n'est affectées\n\n")
 
         dataloc_region_ancien <- subset(dataloc_region_ancien,!(pk_data %in% dataDoublon))
         dataloc_orphelin <- rbind(dataloc_orphelin,subset(dataloc_region_ancien,(pk_data %in% dataDoublon))[,newcol])
@@ -846,25 +787,25 @@ add_localite <- function(data="data/data_2019-06-06_clean.csv",
 
 
 
-    cat("  ==>",nrow(dataloc_region_ancien),"données geo-référencée par l'association COMMUNE REGION_ANCIEN\n")
+    cat("  ==>",nrow(dataloc_region_ancien),"données geo-référencée par l'association COMMUNE REGION_ANCIEN\n\n")
     dataloc_new <- rbind(dataloc_new,dataloc_region_ancien[,newcol])
 
     dataloc <- subset(dataloc,!(pk_data %in% dataloc_new$pk_data))
-    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n")
+    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n\n")
 
 
     ##  COMMUNE seule
-    cat("  5) Recherche des localisation par uniquement le nom ce COMMUNE\n")
+    cat("  5) Recherche des localisation par uniquement le nom ce COMMUNE\n\n")
     dataloc_commune <- subset(dataloc, !is.na(COMMUNE),select=c("pk_data","COMMUNE"))
-    cat(nrow(dataloc_commune),"données avec une COMMUNE\n")
+    cat(nrow(dataloc_commune),"données avec une COMMUNE\n\n")
 
     dataloc_commune <- left_join(dataloc_commune,com_table,by=c("COMMUNE"))
 
     dataloc_commune_inconnu <- subset(dataloc_commune,is.na(INSEE))
     if(nrow(dataloc_commune_inconnu)>0) {
         uniquedata <-unique(dataloc_commune_inconnu[,c("COMMUNE")])
-        cat("ATTENTION",length(uniquedata)," COMMUNE(s) inconnue(s) affectant",nrow(dataloc_commune_inconnu),"données:\n")
-        cat(uniquedata,"\n")
+        cat("ATTENTION",length(uniquedata)," COMMUNE(s) inconnue(s) affectant",nrow(dataloc_commune_inconnu),"données:\n\n")
+        cat(uniquedata,"\n\n")
 
         dataloc_orphelin <- rbind(dataloc_orphelin,dataloc_commune_inconnu[,newcol])
     }
@@ -878,25 +819,25 @@ add_localite <- function(data="data/data_2019-06-06_clean.csv",
         communeDoublon <- unique(dataDoublon_commune$COMMUNE)
         dataDoublon <-  unique(dataDoublon_commune$pk_data)
 
-        cat("ATTENTION",length(dataDoublon), "doublon(s)\n les pk_data:\n")
+        cat("ATTENTION",length(dataDoublon), "doublon(s)\n\n les pk_data:\n\n")
 
-        if(length(dataDoublon) > 201) cat(dataDoublon[1:100],"...",tail(dataDoublon,100),"\n") else cat(dataDoublon,"\n")
+        if(length(dataDoublon) > 201) cat(dataDoublon[1:100],"...",tail(dataDoublon,100),"\n\n") else cat(dataDoublon,"\n\n")
 
-        cat(length(communeDoublon),"commune(s) concernée(s):\n",communeDoublon,"\n")
+        cat(length(communeDoublon),"commune(s) concernée(s):\n\n",communeDoublon,"\n\n")
 
         print(communeDoublon_commune)
 
-        cat("Pour ces data aucunes communes n'est affectées\n")
+        cat("Pour ces data aucunes communes n'est affectées\n\n")
 
         dataloc_commune <- subset(dataloc_commune,!(pk_data %in% dataDoublon))
         dataloc_orphelin <- rbind(dataloc_orphelin,subset(dataloc_commune,(pk_data %in% dataDoublon))[,newcol])
     }
 
-    cat("  ==>",nrow(dataloc_commune),"données geo-référencée par la COMMUNE \n")
+    cat("  ==>",nrow(dataloc_commune),"données geo-référencée par la COMMUNE \n\n")
     dataloc_new <- rbind(dataloc_new,dataloc_commune[,newcol])
 
     dataloc <- subset(dataloc,!(pk_data %in% dataloc_new$pk_data))
-    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n")
+    cat("Reste",nrow(dataloc),"localisation(s) à traiter\n\n")
     newcol <- c("pk_data",setdiff(colnames(data),colnames(dataloc_new)))
     data_new <- data[,..newcol]
     data_new <- left_join(data_new ,dataloc_new)
@@ -914,10 +855,10 @@ add_localite <- function(data="data/data_2019-06-06_clean.csv",
         file_out_orphelin_unique<- paste0(repOut,file_out,"_",suffix_orphelin_unique,".csv")
         file_out <- paste0(repOut,file_out,".csv")
 
-        cat("\nEnregistrement des données avec erreur dans la localisation:\n")
+        cat("\n\nEnregistrement des données avec erreur dans la localisation:\n\n")
         cat(" ==> ",file_out_orphelin)
         write.csv(dataloc_orphelin,file_out_orphelin,row.names=FALSE)
-        cat("   DONE!\n")
+        cat("   DONE!\n\n")
 
         dataloc_orphelin_unique <- unique(dataloc_orphelin[,-1])
         dataloc_orphelin_unique <- dataloc_orphelin_unique[,c(12:13,1:11)]
@@ -926,18 +867,18 @@ add_localite <- function(data="data/data_2019-06-06_clean.csv",
 
 
 
-        cat("\nEnregistrement des ",nrow(dataloc_orphelin_unique)," localisations orphelines :\n",sep="")
+        cat("\n\nEnregistrement des ",nrow(dataloc_orphelin_unique)," localisations orphelines :\n\n",sep="")
         cat(" ==> ",file_out_orphelin_unique)
         write.csv(dataloc_orphelin_unique,file_out_orphelin_unique,row.names=FALSE)
-        cat("   DONE!\n")
+        cat("   DONE!\n\n")
 
 
 
 
-        cat("\nEnregistrement des données:\n")
+        cat("\n\nEnregistrement des données:\n\n")
         cat(" ==> ",file_out)
         write.csv(data_new,file_out,row.names=FALSE)
-        cat("   DONE!\n")
+        cat("   DONE!\n\n")
     }
     if(output) return(data_new)
 } #END add_localite
@@ -961,7 +902,7 @@ date_cleaning <- function(d="data/data_2019-06-06_clean_loc.csv",output=FALSE,sa
         cat("\n\n")
         cat("  -->", fileoutput)
         write.csv(d,fileoutput,row.names=FALSE)
-        cat("   DONE!\n")
+        cat("   DONE!\n\n")
     }
     if(output)(return(d))
 }
@@ -990,7 +931,7 @@ ajout_period <- function(d="data/data_2019-06-06_clean_loc.csv",output=FALSE,sav
         cat("\n\n")
         cat("  -->", fileoutput)
         write.csv(d,fileoutput,row.names=FALSE)
-        cat("   DONE!\n")
+        cat("   DONE!\n\n")
     }
     if(output) return(d)
 
@@ -1003,10 +944,9 @@ add_sunset_sunrise <- function(d="data/data_2019-06-06_clean_loc.csv",output=FAL
     library(dplyr)
     library(data.table)
     d <- my_import_fread(d,"ex: data/data_2019-06-06_clean_loc.csv")
-#browser()
 
     dd <- subset(d,!is.na(d$DATE)&!is.na(d$HEURE))
-    cat(nrow(dd),"samples with valid date and time\n")
+    cat(nrow(dd),"samples with valid date and time\n\n")
 
     dd$DATE_NIGHT_POSIX <- as.Date(dd$DATE_POSIX)-ifelse(as.numeric(substr(dd$HEURE,1,2))>12,0,1)
     dd$DATE_MORNING_POSIX <- as.Date(dd$DATE_POSIX)+ifelse(as.numeric(substr(dd$HEURE,1,2))>12,1,0)
@@ -1014,7 +954,7 @@ add_sunset_sunrise <- function(d="data/data_2019-06-06_clean_loc.csv",output=FAL
     ddd <- subset(dd,is.na(X_CENTROID))
     dd <- subset(dd,!is.na(X_CENTROID))
 
-    cat(nrow(dd),"samples with valid location\n")
+    cat(nrow(dd),"samples with valid location\n\n")
 
     coordinates(dd) <- c("X_CENTROID", "Y_CENTROID")
     lonlat <- SpatialPoints(coordinates(dd),proj4string=CRS("+proj=longlat +datum=WGS84"))
@@ -1036,7 +976,7 @@ add_sunset_sunrise <- function(d="data/data_2019-06-06_clean_loc.csv",output=FAL
         cat("\n\n")
         cat("  -->", fileoutput)
         write.csv(d,fileoutput,row.names=FALSE)
-        cat("   DONE!\n")
+        cat("   DONE!\n\n")
     }
 
     if(output) return(d)
@@ -1113,7 +1053,7 @@ add_orderOcc <- function(d="data/data_2019-06-06_clean_loc_sunset.csv",output=FA
         gg <- gg + labs(title=sp,x="Anomalie de température",y="Heure après le coucher du soleil",colour="")
         gg
         ggfile <- paste0("output/pheno_temp/pheno_temp_",sp,".png")
-        cat("plot -> ",ggfile,"\n")
+        cat("plot -> ",ggfile,"\n\n")
         ggsave(ggfile,gg)
 
     } #END for(sp in vecSp)
@@ -1218,13 +1158,13 @@ add_weather <- function(d="data/data_2019-06-06_clean_loc_sunset.csv",output=FAL
           cat("\n\n")
           cat("  -->", fileoutput_weather)
           write.csv(weather,fileoutput_weather,row.name=FALSE)
-          cat("   DONE!\n")
+          cat("   DONE!\n\n")
 
 
           cat("\n\n")
           cat("  -->", fileoutput)
           write.csv(d,fileoutput,row.names=FALSE)
-          cat("   DONE!\n")
+          cat("   DONE!\n\n")
       }
 
 
@@ -1284,7 +1224,7 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_lo
     if(nc_local) {
         if(nc_extract) {
             for(v in var){
-                cat(" - Variable:",v,"\n-----------------------------\n\n")
+                cat(" - Variable:",v,"\n\n-----------------------------\n\n")
                 lnc[[v]] <- extract_nc_value(first_year,last_year,local_file = TRUE)
             } # END for(v in var){
         } else { # ELSE  if(nc_extract)
@@ -1303,7 +1243,7 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_lo
         } # END  ELSE  if(nc_extract)
     } else { # ELSE if(dnc_local)
         for(v in var){
-            cat(" - Variable:",v,"\n-----------------------------\n\n")
+            cat(" - Variable:",v,"\n\n-----------------------------\n\n")
             lnc[[v]] <- extract_nc_value(first_year,last_year,local_file = FALSE, clim_variable = v, grid_size = 0.25)
         } # END for(v in var){
     }# END ELSE if(dnc_local)
@@ -1318,7 +1258,7 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_lo
     for(l in 1:length(lnc)) {
 
         laVar <- names(lnc)[l]
-        cat("Variable météo:",laVar,"\n--------------------------------\n\n")
+        cat("Variable météo:",laVar,"\n\n--------------------------------\n\n")
 
         point.TM <- point_grid_extract(lnc[[l]],dsite)
 
@@ -1339,7 +1279,6 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,nc_lo
             N1=mean(subset(point.TM[,(MatchLongLat+1)],!is.na(J1_30)))
             weather$AT1[i]=T1-N1
 
-            browser()
             T3=mean(point.TM[(MatchDate-2):MatchDate,(MatchLongLat+1)])
             J3=c((J1-2):J1) #last 3 days
             J3=J3-floor((J3-1)/365)*365 #to keep in 1:365 domain
@@ -1393,12 +1332,12 @@ prepare_weatherRdata <- function(firstYear=1950,lastYear=NULL,repOut="data/") {
     flush.console()
 
     for(i in 1:nrow(dAn)) {
-        cat("\n",paste(dAn[i,],collapse=" | "),"\n\n")
+        cat("\n\n",paste(dAn[i,],collapse=" | "),"\n\n")
         flush.console()
-        cat(" - precipitation: avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc\n")
+        cat(" - precipitation: avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc\n\n")
         flush.console()
         precipitation <- extract_nc_value(dAn$start_real[i],dAn$end[i]) # avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc
-        cat(" - mean_temp : avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc\n")
+        cat(" - mean_temp : avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc\n\n")
         flush.console()
         mean_temp <- extract_nc_value(dAn$start_real[i],dAn$end[i]) # avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc
         file <- dAn$filename[i]
@@ -1420,14 +1359,14 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
 
     start_process <- Sys.time()
 
-    cat("\n Start:",format(start_process,"%Y-%m-%d %H:%M"),"\n")
+    cat("\n\n Start:",format(start_process,"%Y-%m-%d %H:%M"),"\n\n")
 
     if(nc_one_file) {
         lnc <- list()
         if(nc_local) {
             if(nc_extract) {
                 for(v in var){
-                    cat(" - Variable:",v,"\n-----------------------------\n\n")
+                    cat(" - Variable:",v,"\n\n-----------------------------\n\n")
                     lnc[[v]] <- extract_nc_value(first_year,last_year,local_file = TRUE)
                 } # END for(v in var){
             } else { # ELSE  if(nc_extract)
@@ -1446,7 +1385,7 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
             } # END  ELSE  if(nc_extract)
         } else { # ELSE if(dnc_local)
             for(v in var){
-                cat(" - Variable:",v,"\n-----------------------------\n\n")
+                cat(" - Variable:",v,"\n\n-----------------------------\n\n")
                 lnc[[v]] <- extract_nc_value(first_year,last_year,local_file = FALSE, clim_variable = v, grid_size = 0.25)
             } # END for(v in var){
         }# END ELSE if(dnc_local)
@@ -1463,13 +1402,13 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
     if(nc_one_file) {
         lnc_mean <- list()
         for(v in var){
-            cat("Variable:",v,"\n")
+            cat("Variable:",v,"\n\n")
             lnc[[v]]$julian_day <- yday(as.Date(lnc[[v]]$date_extract))
 
             array_sum <- array(NA,dim=c(dim(lnc[[v]]$value_array)[1],dim(lnc[[v]]$value_array)[2],366))
             array_nb <- array(NA,dim=c(dim(lnc[[v]]$value_array)[1],dim(lnc[[v]]$value_array)[2],366))
 
-            cat(" - Mean assessment\n")
+            cat(" - Mean assessment\n\n")
 
             for(j in 1:366){
                 array_j <- lnc[[v]]$value_array[,,which(lnc[[v]]$julian_day == j)]
@@ -1483,7 +1422,7 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
 
             array_sum_diff <- array(NA,dim=c(dim(lnc[[v]]$value_array)[1],dim(lnc[[v]]$value_array)[2],366))
 
-            cat(" - Sd assessment\n")
+            cat(" - Sd assessment\n\n")
 
             for(j in 1:366){
                 array_j <- lnc[[v]]$value_array[,,which(lnc[[v]]$julian_day == j)]
@@ -1507,7 +1446,7 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
 
         larray <- NULL
         lnc <- list()
-        cat("\n-------------------\n- Mean assessment -\n-------------------\n")
+        cat("\n\n-------------------\n\n- Mean assessment -\n\n-------------------\n\n")
 
         for(i in 1:nrow(nc_data_table)) {
             file_i <- paste0(nc_rep,"/",nc_data_table$filename[i])
@@ -1517,12 +1456,12 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
             end <- min(end_i,last_year)
             cat("LOAD:",file_i)
             load(file_i)
-            cat("  DONE\n")
+            cat("  DONE\n\n")
 
-            cat(" 0- Initialisation\n")
+            cat(" 0- Initialisation\n\n")
             lnc <- list()
             for(v in var) {
-                cat("  variable:",v,"\n")
+                cat("  variable:",v,"\n\n")
                 lnc[[v]] <-  get(v)
                 lnc[[v]][["year"]] <- year(lnc[[v]]$date_extract)
                 lnc[[v]]$value_array <- lnc[[v]]$value_array[,,which(lnc[[v]]$year >= start & lnc[[v]]$year <= end)]
@@ -1543,12 +1482,11 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
             }
 
 
-            cat(" 1- somme sur jour julien\n")
+            cat(" 1- somme sur jour julien\n\n")
             for(v in var) {
-                cat("  variable:",v,"\n")
+                cat("  variable:",v,"\n\n")
                 cat("     boucle jour julien: ")
                 for(j in 1:365){
-                    ##                    if(v=="mean_temp") browser()
                     if(j %% 30 == 0) cat(j,"")
                     array_j <- lnc[[v]]$value_array[,,which(lnc[[v]]$julian_day == j)]
 
@@ -1565,24 +1503,24 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
                     } # END ELSE if(length(dim(array_j)) == 3) {
 
                 } #END for(j in 1:366){
-                cat("\n")
+                cat("\n\n")
             } #END  for(v in var) {
-            cat("\n")
+            cat("\n\n")
             for(v in var)  rm(v)
 
         }# END for(i in 1:nrow(nc_data_table)) {
 
-        cat("  2- calcul moyenne:\n")
+        cat("  2- calcul moyenne:\n\n")
         for(v in var) {
             cat("  variable:",v,"   | ")
             for(i in 1:nrow(nc_data_table)) {
                 cat(i,"")
                 larray[[v]][["array_mean"]] <- larray[[v]]$array_sum/larray[[v]]$array_nb
             }
-            cat("\n")
+            cat("\n\n")
         }
 
-        cat("\n-----------------\n- Sd assessment -\n-----------------\n")
+        cat("\n\n-----------------\n\n- Sd assessment -\n\n-----------------\n\n")
         for(i in 1:nrow(nc_data_table)) {
             file_i <- paste0(nc_rep,"/",nc_data_table$filename[i])
             start_i <-  nc_data_table$start[i]
@@ -1591,12 +1529,12 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
             end <- min(end_i,last_year)
             cat("LOAD:",file_i)
             load(file_i)
-            cat("  DONE\n")
+            cat("  DONE\n\n")
 
-             cat(" 0- Initialisation\n")
+             cat(" 0- Initialisation\n\n")
             lnc <- list()
             for(v in var) {
-                cat("  variable:",v,"\n")
+                cat("  variable:",v,"\n\n")
                 lnc[[v]] <-  get(v)
                 lnc[[v]][["year"]] <- year(lnc[[v]]$date_extract)
                 lnc[[v]]$value_array <- lnc[[v]]$value_array[,,which(lnc[[v]]$year >= start & lnc[[v]]$year <= end)]
@@ -1606,14 +1544,13 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
 
             }
 
-            cat(" 1- somme ecart moyenne sur jour julien\n")
+            cat(" 1- somme ecart moyenne sur jour julien\n\n")
 
             for(v in var) {
-                cat("  variable:",v,"\n")
+                cat("  variable:",v,"\n\n")
                 cat("     boucle jour julien: ")
                 for(j in 1:365){
                     if(j %% 30 == 0) cat(j,"")
-                    ##browser()
                     array_j <- lnc[[v]]$value_array[,,which(lnc[[v]]$julian_day == j)]
                     if(length(dim(array_j)) == 3) {
                         for(z in 1:dim(array_j)[3])
@@ -1626,24 +1563,24 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
                     } # END ELSE if(length(dim(array_j)) == 3) {
 
                 } #END for(j in 1:366){
-                cat("\n")
+                cat("\n\n")
             } #END  for(v in var) {
-            cat("\n")
+            cat("\n\n")
         }# END for(i in 1:nrow(nc_data_table)) {  1- somme ecart moyenne sur jour julien
-        cat("  2- calcul ecart type:\n")
+        cat("  2- calcul ecart type:\n\n")
         for(v in var) {
             cat("  variable:",v,"   | ")
             for(i in 1:nrow(nc_data_table)) {
                 cat(i,"")
                 larray[[v]][["array_sd"]] <- larray[[v]]$array_sum_diff/larray[[v]]$array_nb
             }
-            cat("\n")
+            cat("\n\n")
         } # END for(v in var) {  2- calcul ecart type:
 
 
-        cat("\n--------------------------\n- Preparation sauvegarde -\n--------------------------\n")
+        cat("\n\n--------------------------\n\n- Preparation sauvegarde -\n\n--------------------------\n\n")
         lnc_mean <- list()
-          cat("  variable:",v,"\n")
+          cat("  variable:",v,"\n\n")
         for(v in var) {
         years <- unique(larray[[v]]$year)
         date_M_J<- format(as.Date(paste0(last_year,"-",1:366),"%Y-%j"),"%m-%d")
@@ -1660,13 +1597,13 @@ assess_normal_weather <- function(first_year=1950,last_year=2000,nc_one_file=FAL
 
     cat("  -->", file_save_nc)
     save(lnc_mean,file=file_save_nc)
-    cat("   DONE!\n")
+    cat("   DONE!\n\n")
 
    end_process <- Sys.time()
 
-    cat("\n End:",format(end_process,"%Y-%m-%d %H:%M"),"\n")
+    cat("\n\n End:",format(end_process,"%Y-%m-%d %H:%M"),"\n\n")
     duration <- round(difftime(end_process,start_process,units="mins"))
-    cat("    Duration:",duration,"minutes\n")
+    cat("    Duration:",duration,"minutes\n\n")
 
 }
 
@@ -1689,7 +1626,7 @@ aggregate_raw_files <- function(rep_raw=paste0(getwd(),"/data_raw"),fileColumns=
     cat("Get raw data file from:",rep_raw)
     listfile <- dir(rep_raw,full.names=TRUE)
     nb_file <-  length(listfile)
-    cat("  ...  ",nb_file,"file(s)     DONE !\n")
+    cat("  ...  ",nb_file,"file(s)     DONE !\n\n")
 
     d <- NULL
 
@@ -1697,17 +1634,17 @@ aggregate_raw_files <- function(rep_raw=paste0(getwd(),"/data_raw"),fileColumns=
     for(i in 1:length(listfile)) {
                                         #   f <- listfile[2]
         f <- listfile[i]
-        cat("\n\n [",i,"/",nb_file,"] FILE: ",f,"\n",sep="")
+        cat("\n\n [",i,"/",nb_file,"] FILE: ",f,"\n\n",sep="")
         df <- fread(f)
         if (nrow(df)>0) {
-            cat("\n",ncol(df),"colonnes et ",nrow(df),"ligne(s)\n")
+            cat("\n\n",ncol(df),"colonnes et ",nrow(df),"ligne(s)\n\n")
 
 
             df_col <- colnames(df)
             d_col <- colnames(d)
 
             ncol_good <- length(intersect(df_col,columns_original))
-            cat("\n",ncol_good, "colonnes correctes\n")
+            cat("\n\n",ncol_good, "colonnes correctes\n\n")
 
             col_abs <- setdiff(columns,df_col)
             ncol_abs <- length(col_abs)
@@ -1717,10 +1654,10 @@ aggregate_raw_files <- function(rep_raw=paste0(getwd(),"/data_raw"),fileColumns=
                 col_original_abs <- setdiff(columns_original,df_col)
                 ncol_original_abs <- length(col_original_abs)
                 if (ncol_original_abs > 0) {
-                    cat("\n Ajout des",ncol_original_abs, "colonnes absentes\n")
-                    cat(col_abs,"\n")
+                    cat("\n\n Ajout des",ncol_original_abs, "colonnes absentes\n\n")
+                    cat(col_abs,"\n\n")
                 } else {
-                    cat("\n0 colonne manquante\n")
+                    cat("\n\n0 colonne manquante\n\n")
                 }
                 df_abs <- data.table(matrix(NA,nrow=nrow(df),ncol=ncol_abs))
                 colnames(df_abs) <- col_abs
@@ -1730,7 +1667,7 @@ aggregate_raw_files <- function(rep_raw=paste0(getwd(),"/data_raw"),fileColumns=
                 df <- data.table(df,df_abs)
 
             } else {
-                cat("\n0 colonne manquante\n")
+                cat("\n\n0 colonne manquante\n\n")
             }
 
 
@@ -1740,8 +1677,8 @@ aggregate_raw_files <- function(rep_raw=paste0(getwd(),"/data_raw"),fileColumns=
 
 #
             if (ncol_new > 0 & !is.null(nrow(d))) {
-                   cat("\n Ajout des ",ncol_new, "nouvelles colonnes:\n")
-            cat(col_new,"\n")
+                   cat("\n\n Ajout des ",ncol_new, "nouvelles colonnes:\n\n")
+            cat(col_new,"\n\n")
 
                 d_new <- data.table(matrix(NA,nrow=nrow(d),ncol=ncol_new))
                 colnames(d_new) <- col_new
@@ -1751,24 +1688,23 @@ aggregate_raw_files <- function(rep_raw=paste0(getwd(),"/data_raw"),fileColumns=
                 d <- data.table(cbind(d,d_new))
 
             } else {
-                cat("\n0 nouvelle colonne\n")
+                cat("\n\n0 nouvelle colonne\n\n")
             }
 
-#browser()
             df <- df[,columns,with=FALSE]
             d <- d[,columns,with=FALSE]
             d <- rbind(d,df)
-            cat("\n  --> table global:",nrow(d),"lignes\n")
+            cat("\n\n  --> table global:",nrow(d),"lignes\n\n")
 
         } else {
 
-            cat("\n0 ligne dans ce fichier....\n")
+            cat("\n\n0 ligne dans ce fichier....\n\n")
         }
 
 
     }
 
-      cat("\n\n Fin de l'assemblage:",ncol(d),"colonnes et ",nrow(d),"lignes\n")
+      cat("\n\n Fin de l'assemblage:",ncol(d),"colonnes et ",nrow(d),"lignes\n\n")
     return(d)
 
 
