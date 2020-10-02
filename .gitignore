@@ -1,11 +1,15 @@
 output/
 data_raw/
+data_raw_new/
 data_weather/
 data/
+data_new_2/
 .Rproj.user
 .Rhistory
 *.html
 *.r~
+
+output_import/
 BCI2017.R
 monScript_capture.r
 sig/
@@ -28,3 +32,8 @@ isd-history.csv
 *.txt#
 .#truc.txt
 *.rmd#
+
+.#~
+.#fun_bilan.r
+
+*Copie.csv
