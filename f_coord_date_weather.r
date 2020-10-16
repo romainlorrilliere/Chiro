@@ -31,7 +31,7 @@
 get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,temp_windows=c(0,3,9),
                                nc_local=TRUE,nc_extract=FALSE,
                                nc_data="C:/git/Vigie-Chiro_scripts/data_weather/table_weather_RDS_names.csv",
-                               nc_ref_file="C:/git/Vigie-Chiro_scripts/data_weather/normal_weather_precipitation_mean_temp_1950-2000.rds",nc_rep="C:/git/Vigie-Chiro_scripts/data_weather",
+                               nc_ref_file="data_weather/normal_weather_precipitation_mean_temp_Inf--Inf.Rdata",nc_rep="C:/git/Vigie-Chiro_scripts/data_weather",
                                var=c("precipitation","mean_temp"),
                                dsample_colnames=c("date"="date",
                                                   "longitude"="longitude",
@@ -51,7 +51,17 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,temp_
 ##library(lubridate)
     ## dsample$date <- as.Date(substr(dsample$date,1,10),format="%d/%m/%Y")
 
-  ##  dsample=dsample;first_year=NULL;last_year=NULL;time_windows=c(0,3,9);nc_local=TRUE;nc_extract=FALSE;nc_data="C:/git/Vigie-Chiro_scripts/data_weather/table_weather_Rdata_names.csv";nc_rep="C:/git/Vigie-Chiro_scripts/data_weather";nc_ref_file="C:/git/Vigie-Chiro_scripts/data_weather/normal_weather_precipitation_mean_temp_Inf--Inf.Rdata";var=c("precipitation","mean_temp");dsample_colnames=c("site_id"="site_id","date"="date","longitude"="longitude","latitude"="latitude");output=TRUE;save=FALSE;fileoutput=NULL
+  ##    dsample=dsample;first_year=NULL;last_year=NULL;time_windows=c(0,3,9);nc_local=TRUE;nc_extract=FALSE;nc_data="C:/git/Vigie-Chiro_scripts/data_weather/table_weather_Rdata_names.csv";nc_rep="C:/git/Vigie-Chiro_scripts/data_weather";nc_ref_file="C:/git/Vigie-Chiro_scripts/data_weather/normal_weather_precipitation_mean_temp_Inf--Inf.Rdata";var=c("precipitation","mean_temp");dsample_colnames=c("site_id"="site_id","date"="date","longitude"="longitude","latitude"="latitude");output=TRUE;save=FALSE;fileoutput=NULL
+
+## d  <- fread("../_STOC_eps/export/data_FrenchBBS_squarre_Clement_2020-10-07_allSp_2001_2020.csv",dec=",")
+   ## dsample <- d[,.(carre,annee,longitude_grid_wgs84,latitude_grid_wgs84)]
+  ##  colnames(dsample) <- c("site_id","annee","longitude","latitude")
+
+## dsample[,date := paste0(annee,"-08-01")]
+
+    ##    dsample=dsample;first_year=NULL;last_year=NULL;time_windows=c(90);nc_local=TRUE;nc_extract=FALSE;nc_data="C:/git/Vigie-Chiro_scripts/data_weather/table_weather_Rdata_names.csv";nc_rep="C:/git/Vigie-Chiro_scripts/data_weather";nc_ref_file="data_weather/normal_weather_precipitation_mean_temp_Inf--Inf.Rdata";var=c("precipitation","mean_temp");dsample_colnames=c("site_id"="site_id","date"="date","longitude"="longitude","latitude"="latitude");output=TRUE;save=FALSE;fileoutput=NULL;  dsample_colnames=c("date"="date","longitude"="longitude_grid_wgs84","latitude"="latitude_grid_wgs84")
+##get_sample_weather(dsample=dsample,first_year=NULL,last_year=NULL,time_windows=c(90),nc_local=TRUE,nc_extract=FALSE,nc_data="C:/git/Vigie-Chiro_scripts/data_weather/table_weather_Rdata_names.csv",nc_rep="C:/git/Vigie-Chiro_scripts/data_weather",nc_ref_file="data_weather/normal_weather_precipitation_mean_temp_Inf--Inf.Rdata",var=c("precipitation","mean_temp"),dsample_colnames=c("site_id"="site_id","date"="date","longitude"="longitude","latitude"="latitude"),output=TRUE,save=FALSE,fileoutput=NULL)
+
     ## -------------------------------------------------------------------------
 
     dsample <- my_import_fread(dsample,"file of sample data")
@@ -93,6 +103,7 @@ get_sample_weather <- function(dsample=NULL,first_year=NULL,last_year=NULL,temp_
     }
 
     lnc_mean <- readRDS(nc_ref_file) ## changer ça en RDS
+    ## load(nc_ref_file)
     for(v in var)
         lnc_mean[[v]]$longlat <- paste(lnc_mean[[v]]$longitude,lnc_mean[[v]]$latitude)
 
@@ -279,7 +290,7 @@ nc2rdata <- function(firstYear=1950,lastYear=NULL,repOut="data/") {
 
     ## -------------------------------------------------------------------------
     ## set of parameters to debogging
-    ## firstYear=1950;lastYear=NULL;repOut="data/"
+   ##firstYear=1950;lastYear=NULL;repOut="data/"
     ## -------------------------------------------------------------------------
 
     if(is.null(lastYear)) lastYear <- as.numeric(format(Sys.time(),"%Y"))
@@ -320,9 +331,9 @@ nc2rdata <- function(firstYear=1950,lastYear=NULL,repOut="data/") {
 ##' @return NA
 ##' @author Romain Lorrilliere
 ##' @importFrom climateExtract extract_nc_value
-nc2rds <- function(firstYear=1950,lastYear=NULL,repOut="C:/git/Vigie-Chiro_scripts/data_weather") {
+nc2rds <- function(firstYear=1950,lastYear=NULL,repOut="data_weather/",file_precipitation = "data_weather/rr_ens_mean_0.25deg_reg_v20.0e.nc", file_temperature = "data_weather/tg_ens_mean_0.25deg_reg_v20.0e.nc") {
                                         #  firstYear=1950;lastYear=NULL;repOut="data/"
-    library(climateExtract) #https://github.com/RetoSchmucki/climateExtract
+    source("c:/git/climateExtract/R/climateExtract.R") #https://github.com/RetoSchmucki/climateExtract
 
     ## -------------------------------------------------------------------------
     ## set of parameters to debogging
@@ -331,7 +342,7 @@ nc2rds <- function(firstYear=1950,lastYear=NULL,repOut="C:/git/Vigie-Chiro_scrip
 
     if(is.null(repOut)) repOut <- choose.dir()
 
-    if(is.null(lastYear)) lastYear <- as.numeric(format(Sys.time(),"%Y"))
+    if(is.null(lastYear)) lastYear <- max(as.numeric(format(Sys.time(),"%Y")))
     vecAn_start <- seq(firstYear,lastYear,5)
     vecAn_end <- sort(union(seq(firstYear+4,lastYear,5),lastYear))
     dAn <- data.frame(start=vecAn_start,end=vecAn_end)
@@ -343,9 +354,9 @@ nc2rds <- function(firstYear=1950,lastYear=NULL,repOut="C:/git/Vigie-Chiro_scrip
     for(i in 1:nrow(dAn)) {
         cat("\n",paste(dAn[i,],collapse=" | "),"\n\n")
         flush.console()
-        cat("\n - precipitation: avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc\n")
+        cat("\n - precipitation: avec le fichier",file_precipitation,"\n")
         flush.console()
-        precipitation <- extract_nc_value(dAn$start_real[i],dAn$end[i]) # avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc
+        precipitation <- extract_nc_value(dAn$start_real[i],dAn$end[i],local_file=TRUE,file_path=file_precipitation) # avec le fichier rr_ens_mean_0.25deg_reg_v20.0e.nc
 
         dim(str(precipitation))
 
@@ -357,9 +368,9 @@ nc2rds <- function(firstYear=1950,lastYear=NULL,repOut="C:/git/Vigie-Chiro_scrip
             }
         }
 
-        cat("\n - mean_temp : avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc\n")
+        cat("\n - mean_temp : avec le fichier ",file_temperature,"\n")
         flush.console()
-        mean_temp <- extract_nc_value(dAn$start_real[i],dAn$end[i]) # avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc
+        mean_temp <- extract_nc_value(dAn$start_real[i],dAn$end[i],local_file=TRUE,file_path=file_temperature) # avec le fichier tg_ens_mean_0.25deg_reg_v20.0e.nc
 
         dim(str(mean_temp))
 
